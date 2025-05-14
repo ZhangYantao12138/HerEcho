@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 
-const activeTab = ref('聊天');
+const router = useRouter();
+const route = useRoute();
+
 const tabs = [
-  { key: '叙梦' },
-  { key: '聊天' },
-  { key: '发现' },
-  { key: '我的' }
+  { key: '叙梦', path: '/dream' },
+  { key: '聊天', path: '/chat' },
+  { key: '发现', path: '/discover' },
+  { key: '我的', path: '/profile' }
 ];
 
-function setActiveTab(tab: string) {
-  activeTab.value = tab;
+const currentPath = computed(() => route.path);
+
+function navigate(path: string) {
+  router.push(path);
 }
 </script>
 
@@ -20,8 +25,8 @@ function setActiveTab(tab: string) {
       v-for="tab in tabs" 
       :key="tab.key"
       class="nav-item"
-      :class="{ active: activeTab === tab.key }"
-      @click="setActiveTab(tab.key)"
+      :class="{ active: currentPath === tab.path }"
+      @click="navigate(tab.path)"
     >
       <div class="nav-text">{{ tab.key }}</div>
     </div>
@@ -35,9 +40,14 @@ function setActiveTab(tab: string) {
   background-color: #000000;
   border-top: 1px solid #222222;
   padding: 12px 0;
-  position: sticky;
+  position: fixed;
   bottom: 0;
-  z-index: 10;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 30;
+  height: 48px;
+  box-sizing: border-box;
 }
 
 .nav-item {

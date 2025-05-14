@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { RiArrowDownSLine } from '@remixicon/vue';
 
 const props = defineProps({
   scene: {
@@ -17,9 +18,11 @@ const props = defineProps({
 });
 
 const isCollapsed = ref(false);
+const emit = defineEmits(['toggle-collapse']);
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
+  emit('toggle-collapse', isCollapsed.value);
 }
 </script>
 
@@ -34,8 +37,13 @@ function toggleCollapse() {
       <div class="progress-bar">
         <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
       </div>
-      <div class="collapse-button" @click="toggleCollapse">
-        {{ isCollapsed ? '展开对话' : '收起对话' }}
+      <div class="collapse-wrapper" @click="toggleCollapse">
+        <div class="collapse-button">
+          {{ isCollapsed ? '展开对话' : '收起对话' }}
+        </div>
+        <div class="arrow-icon" :class="{ 'rotate': isCollapsed }">
+          <RiArrowDownSLine />
+        </div>
       </div>
     </div>
   </div>
@@ -84,14 +92,31 @@ function toggleCollapse() {
   border-radius: 2px;
 }
 
+.collapse-wrapper {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
 .collapse-button {
   color: #cccccc;
   font-size: 12px;
-  cursor: pointer;
   padding: 2px 5px;
 }
 
-.collapse-button:hover {
+.arrow-icon {
+  display: flex;
+  align-items: center;
+  color: #cccccc;
+  font-size: 16px;
+  transition: transform 0.3s ease;
+}
+
+.arrow-icon.rotate {
+  transform: rotate(180deg);
+}
+
+.collapse-wrapper:hover .collapse-button {
   text-decoration: underline;
 }
 </style> 

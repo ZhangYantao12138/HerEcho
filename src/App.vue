@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import ChatPage from './components/ChatPage.vue';
 </script>
 
 <template>
   <div class="app-container">
-    <ChatPage />
+    <router-view />
   </div>
 </template>
 
