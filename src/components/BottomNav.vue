@@ -3,10 +3,10 @@ import { ref } from 'vue';
 
 const activeTab = ref('聊天');
 const tabs = [
-  { key: '叙梦', icon: '💭' },
-  { key: '聊天', icon: '💬' },
-  { key: '发现', icon: '🔍' },
-  { key: '我的', icon: '👤' }
+  { key: '叙梦' },
+  { key: '聊天' },
+  { key: '发现' },
+  { key: '我的' }
 ];
 
 function setActiveTab(tab: string) {
@@ -23,7 +23,6 @@ function setActiveTab(tab: string) {
       :class="{ active: activeTab === tab.key }"
       @click="setActiveTab(tab.key)"
     >
-      <div class="nav-icon">{{ tab.icon }}</div>
       <div class="nav-text">{{ tab.key }}</div>
     </div>
   </div>
@@ -32,9 +31,10 @@ function setActiveTab(tab: string) {
 <style scoped>
 .nav-container {
   display: flex;
-  background-color: white;
-  border-top: 1px solid #e0e0e0;
-  padding: 8px 0;
+  justify-content: space-around;
+  background-color: #000000;
+  border-top: 1px solid #222222;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
   z-index: 10;
@@ -45,21 +45,19 @@ function setActiveTab(tab: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   padding: 5px 0;
   cursor: pointer;
-  color: #888;
+  color: #888888;
 }
 
 .nav-item.active {
-  color: #42b883;
-}
-
-.nav-icon {
-  font-size: 20px;
-  margin-bottom: 2px;
+  color: #ffffff;
 }
 
 .nav-text {
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
 }
 </style> 
