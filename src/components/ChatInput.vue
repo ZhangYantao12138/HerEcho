@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, defineProps } from 'vue';
+import { ref } from 'vue';
 import { 
   RiMic2Line, 
   RiMessage2Line, 
   RiAddCircleLine 
 } from '@remixicon/vue';
 
-const props = defineProps({
+defineProps({
   isCollapsed: {
     type: Boolean,
     default: false

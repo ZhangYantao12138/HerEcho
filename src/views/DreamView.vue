@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import BottomNav from '../components/BottomNav.vue';
 import { useScenesStore } from '../stores/scenes';
 import oneImage from '../assets/one.png'; // 直接导入图片

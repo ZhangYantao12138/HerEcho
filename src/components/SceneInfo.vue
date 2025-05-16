@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { RiArrowDownSLine } from '@remixicon/vue';
 
-const props = defineProps({
+defineProps({
   scene: {
     type: String,
     default: '（番外）你发现羌青瓷接近你别有目的'
