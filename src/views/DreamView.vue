@@ -2,9 +2,20 @@
 import { ref, reactive, onMounted } from 'vue';
 import BottomNav from '../components/BottomNav.vue';
 import { useScenesStore } from '../stores/scenes';
+import oneImage from '../assets/one.png'; // 直接导入图片
 
 // 获取分镜数据存储
 const scenesStore = useScenesStore();
+
+// 默认备用图片
+const fallbackImage = oneImage;
+
+// 图片加载错误处理
+function handleImageError(e: Event) {
+  const target = e.target as HTMLImageElement;
+  console.error('图片加载失败:', target.src);
+  target.src = fallbackImage;
+}
 
 // 是否正在播放分镜动画
 const isPlaying = ref(false);
@@ -45,6 +56,8 @@ function replayScene() {
 onMounted(() => {
   // 如果需要，可以重置到初始场景
   // scenesStore.resetToStart();
+  console.log('当前场景图片URL:', scenesStore.currentScene.image);
+  console.log('导入的图片:', oneImage);
 });
 </script>
 
@@ -53,7 +66,12 @@ onMounted(() => {
     <!-- 分镜内容区域 -->
     <div class="scene-content" :class="{ 'playing': isPlaying }">
       <div class="scene-image">
-        <img :src="scenesStore.currentScene.image" alt="分镜场景" class="scene-img" />
+        <img 
+          :src="oneImage" 
+          alt="分镜场景" 
+          class="scene-img"
+          @error="handleImageError" 
+        />
       </div>
       
       <!-- 问题区域 -->
@@ -96,6 +114,8 @@ onMounted(() => {
   background-color: #121a1a;
   color: white;
   padding-bottom: 48px; /* 为底部导航栏留出空间 */
+  position: relative;
+  overflow: hidden;
 }
 
 .scene-content {
@@ -105,6 +125,7 @@ onMounted(() => {
   overflow: hidden;
   position: relative;
   transition: opacity 0.3s ease;
+  height: 100%;
 }
 
 .scene-content.playing {
@@ -116,12 +137,19 @@ onMounted(() => {
   width: 100%;
   position: relative;
   overflow: hidden;
+  height: 100%;
 }
 
 .scene-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  display: block;
+  max-width: 100%;
 }
 
 .question-container {
@@ -132,6 +160,7 @@ onMounted(() => {
   padding: 15px;
   background-color: rgba(0, 0, 0, 0.7);
   text-align: center;
+  z-index: 1;
 }
 
 .question-text {
@@ -154,6 +183,7 @@ onMounted(() => {
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  z-index: 1;
 }
 
 .replay-button:hover {
@@ -179,6 +209,7 @@ onMounted(() => {
   padding: 15px;
   gap: 10px;
   transition: opacity 0.3s ease;
+  z-index: 1;
 }
 
 .options-container.disabled {

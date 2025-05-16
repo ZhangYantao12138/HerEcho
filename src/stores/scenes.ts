@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import sceneOneImage from '../assets/one.png'; // 导入图片
 
 // 分镜数据类型定义
 interface Option {
@@ -16,9 +17,6 @@ interface Scene {
   options: Option[];
   description?: string; // 分镜描述，可选
 }
-
-// 导入所需资源
-import sceneOneImage from '../assets/one.png';
 
 // 创建分镜数据存储
 export const useScenesStore = defineStore('scenes', () => {
