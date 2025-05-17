@@ -200,20 +200,22 @@ onMounted(() => {
 
 <style scoped>
 .dream-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: #121212;
+  color: white;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  position: relative;
-  overflow: hidden;
 }
 
 .background-image {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: -1;
+  z-index: 1;
 }
 
 .background-image img {
@@ -223,8 +225,8 @@ onMounted(() => {
 }
 
 .debug-panel {
-  position: absolute;
-  top: 10px;
+  position: fixed;
+  top: 70px;
   left: 10px;
   background-color: rgba(0, 0, 0, 0.7);
   color: #11f011;
@@ -234,7 +236,7 @@ onMounted(() => {
   max-width: 300px;
   overflow: auto;
   max-height: 300px;
-  z-index: 999;
+  z-index: 10;
 }
 
 .debug-panel h3 {
@@ -248,7 +250,7 @@ onMounted(() => {
 }
 
 .effects-button {
-  position: absolute;
+  position: fixed;
   top: 15px;
   right: 15px;
   width: 40px;
@@ -259,7 +261,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  z-index: 5;
+  z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -269,14 +271,14 @@ onMounted(() => {
 }
 
 .effects-list {
-  position: absolute;
+  position: fixed;
   top: 65px;
   right: 15px;
   width: 280px;
   max-height: 70vh;
   background-color: rgba(0, 0, 0, 0.8);
   border-radius: 10px;
-  z-index: 5;
+  z-index: 10;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
@@ -323,17 +325,18 @@ onMounted(() => {
 }
 
 .content-container {
-  position: absolute;
-  bottom: 48px; /* 为底部导航栏留出空间 */
+  position: fixed;
+  bottom: 60px;
   left: 0;
   width: 100%;
-  height: 33vh; /* 占据屏幕下方1/3 */
-  background-color: rgba(0, 0, 0, 0.7);
+  min-height: 33vh;
+  background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;
   padding: 20px;
   transition: opacity 0.3s ease;
+  z-index: 5;
 }
 
 .content-container.playing {
@@ -346,7 +349,7 @@ onMounted(() => {
 
 .dream-title {
   color: #ffffff;
-  font-size: 20px;
+  font-size: 24px;
   margin: 0 0 10px 0;
   font-weight: bold;
 }
@@ -354,34 +357,38 @@ onMounted(() => {
 .dream-description {
   color: #ffffff;
   font-size: 16px;
+  line-height: 1.6;
   margin: 0;
 }
 
 .options-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 12px;
+  margin-top: 20px;
   overflow-y: auto;
-  flex: 1;
+  padding-bottom: 10px;
 }
 
 .option-item {
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   padding: 15px;
   cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .option-item:hover {
   transform: translateY(-2px);
-  background-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .option-text {
-  color: #333;
+  color: #fff;
   font-size: 15px;
+  line-height: 1.5;
 }
 
 .option-dialog-overlay {
@@ -390,33 +397,33 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10;
+  z-index: 20;
 }
 
 .option-dialog {
-  width: 80%;
+  width: 90%;
   max-width: 500px;
-  background-color: rgba(30, 30, 30, 0.9);
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 15px;
+  padding: 25px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
 }
 
 .dialog-content {
   color: #ffffff;
   font-size: 16px;
-  line-height: 1.5;
-  margin-bottom: 20px;
+  line-height: 1.6;
+  margin-bottom: 25px;
 }
 
 .special-effect {
   margin-top: 20px;
-  padding: 10px;
-  background-color: rgba(231, 76, 60, 0.2);
+  padding: 15px;
+  background-color: rgba(231, 76, 60, 0.1);
   border-left: 3px solid #e74c3c;
   border-radius: 4px;
 }
@@ -424,7 +431,7 @@ onMounted(() => {
 .effect-title {
   color: #e74c3c;
   font-weight: bold;
-  margin: 0 0 5px 0;
+  margin: 0 0 8px 0;
 }
 
 .effect-content {
@@ -436,16 +443,18 @@ onMounted(() => {
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
+  margin-top: 20px;
 }
 
 .continue-button {
   background-color: #e74c3c;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 12px 25px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
+  font-weight: 500;
   transition: background-color 0.2s ease;
 }
 
@@ -454,7 +463,7 @@ onMounted(() => {
 }
 
 .back-button {
-  position: absolute;
+  position: fixed;
   top: 15px;
   left: 15px;
   width: 40px;
@@ -465,7 +474,7 @@ onMounted(() => {
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  z-index: 5;
+  z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -488,17 +497,25 @@ onMounted(() => {
 }
 
 .ending-dialog {
-  background-color: rgba(30, 30, 30, 0.9);
-  border-radius: 10px;
+  background-color: rgba(30, 30, 30, 0.95);
+  border-radius: 15px;
   padding: 30px;
   max-width: 80%;
   text-align: center;
   color: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .ending-dialog h2 {
   color: #e74c3c;
   margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.ending-dialog p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 25px;
 }
 
 .ending-footer {
