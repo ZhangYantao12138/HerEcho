@@ -24,8 +24,8 @@ interface DreamStory {
 const dreamStories = ref<DreamStory[]>([
   {
     id: 'story1',
-    title: '订婚宴的暗影',
-    description: '在这场表面平静的订婚宴上，暗流涌动。你将揭开莱诺家族的秘密，面对重重选择...',
+    title: '叙梦故事1',
+    description: '古风故事',
     coverImage: oneImage,
     isNew: true,
     progress: 0,
@@ -34,8 +34,8 @@ const dreamStories = ref<DreamStory[]>([
   },
   {
     id: 'story2',
-    title: '记忆迷宫',
-    description: '敬请期待：一段被封印的记忆，一场寻找真相的旅程...',
+    title: '叙梦故事2',
+    description: '敬请期待...',
     coverImage: oneImage,
     isNew: false,
     isLocked: true,
@@ -44,8 +44,8 @@ const dreamStories = ref<DreamStory[]>([
   },
   {
     id: 'story3',
-    title: '暗夜追凶',
-    description: '敬请期待：当记者的使命与个人恩怨交织，你将如何选择？',
+    title: '叙梦故事3',
+    description: '敬请期待...',
     coverImage: oneImage,
     isNew: false,
     isLocked: true,
@@ -181,9 +181,13 @@ function closeDetails() {
 <style scoped>
 .dream-home-container {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background-color: #121212;
   color: white;
   padding-bottom: 60px;
+  position: relative;
 }
 
 .dream-header {

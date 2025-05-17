@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import sceneOneImage from '../assets/one.png'
 
 interface Option {
     id: string
@@ -11,7 +12,6 @@ interface Option {
         triggerEnding?: string
         unlockClue?: string
         triggerEvent?: string
-        nextSceneId?: string
     }
 }
 
@@ -19,6 +19,8 @@ interface Scene {
     id: string
     title: string
     description: string
+    image?: string
+    canReplay?: boolean
     options?: Option[]
 }
 
@@ -30,6 +32,7 @@ interface Ending {
 }
 
 interface GameState {
+    currentStoryId: string
     currentSceneId: string
     scenes: Scene[]
     showOptionDialog: boolean
@@ -41,11 +44,12 @@ interface GameState {
     harmToJiangCount: number
     endings: Ending[]
     activeEnding: string | null
-    currentStoryId: string
+    userChoices: Array<{ sceneId: string, optionId: string }>
 }
 
 export const useDreamStore = defineStore('dream', {
     state: (): GameState => ({
+        currentStoryId: '',
         currentSceneId: '',
         scenes: [],
         showOptionDialog: false,
@@ -57,7 +61,7 @@ export const useDreamStore = defineStore('dream', {
         harmToJiangCount: 0,
         endings: [],
         activeEnding: null,
-        currentStoryId: ''
+        userChoices: []
     }),
 
     getters: {
@@ -91,6 +95,7 @@ export const useDreamStore = defineStore('dream', {
             this.memoryFlashbackCount = 0;
             this.harmToJiangCount = 0;
             this.activeEnding = null;
+            this.userChoices = [];
 
             // 初始化场景
             this.initializeScenes();
@@ -99,33 +104,23 @@ export const useDreamStore = defineStore('dream', {
             this.currentSceneId = 'scene1';
         },
 
-        resetToStart() {
-            this.initializeScenes()
-            this.currentSceneId = 'scene1'
-            this.showOptionDialog = false
-            this.currentOption = null
-            this.unlockedEffects = []
-            this.unlockedStorylines = []
-            this.collectedClues = []
-            this.memoryFlashbackCount = 0
-            this.harmToJiangCount = 0
-            this.activeEnding = null
-        },
-
         initializeScenes() {
             this.scenes = [
                 {
                     id: 'scene1',
                     title: '订婚宴暗流',
                     description: '在这场表面平静的订婚宴上，暗流涌动...',
+                    image: sceneOneImage,
+                    canReplay: true,
                     options: [
                         {
                             id: 'scene1_opt1',
                             text: '追击蒋伯驾',
                             content: '你决定跟踪蒋伯驾，来到了天台...',
+                            nextSceneId: 'scene2',
                             consequences: {
                                 unlockStoryline: '双面谍影',
-                                nextSceneId: 'scene2'
+                                unlockClue: '缪家密谋'
                             }
                         },
                         {
@@ -140,18 +135,18 @@ export const useDreamStore = defineStore('dream', {
                             id: 'scene1_opt3',
                             text: '收集情报',
                             content: '你仔细聆听着周围的谈话...',
+                            nextSceneId: 'scene2',
                             consequences: {
-                                unlockClue: '圣女计划',
-                                nextSceneId: 'scene2'
+                                unlockClue: '圣女计划'
                             }
                         },
                         {
                             id: 'scene1_opt4',
                             text: '联系程聿怀',
                             content: '你冒险联系了程聿怀...',
+                            nextSceneId: 'scene2',
                             consequences: {
-                                triggerEvent: '血亲保护机制',
-                                nextSceneId: 'scene2'
+                                triggerEvent: '血亲保护机制'
                             }
                         }
                     ]
@@ -160,11 +155,14 @@ export const useDreamStore = defineStore('dream', {
                     id: 'scene2',
                     title: '浴室囚牢',
                     description: '在这个密闭的空间里，真相与谎言交织...',
+                    image: sceneOneImage,
+                    canReplay: true,
                     options: [
                         {
                             id: 'scene2_opt1',
                             text: '撕裂衬衫',
                             content: '你猛地撕开他的衬衫...',
+                            nextSceneId: 'scene3',
                             consequences: {
                                 unlockClue: '缪家毒蛇纹身'
                             }
@@ -181,6 +179,7 @@ export const useDreamStore = defineStore('dream', {
                             id: 'scene2_opt3',
                             text: '触碰伤痕',
                             content: '你轻轻触碰那道伤痕...',
+                            nextSceneId: 'scene3',
                             consequences: {
                                 triggerEvent: '记忆闪回'
                             }
@@ -199,11 +198,14 @@ export const useDreamStore = defineStore('dream', {
                     id: 'scene3',
                     title: '暴雨救援',
                     description: '暴雨中的真相往往伴随着鲜血...',
+                    image: sceneOneImage,
+                    canReplay: true,
                     options: [
                         {
                             id: 'scene3_opt1',
                             text: '孤身迎战',
                             content: '你选择独自面对危险...',
+                            nextSceneId: 'scene4',
                             consequences: {
                                 unlockStoryline: '独手战鹰'
                             }
@@ -212,6 +214,7 @@ export const useDreamStore = defineStore('dream', {
                             id: 'scene3_opt2',
                             text: '身份质询',
                             content: '你决定质问他的真实身份...',
+                            nextSceneId: 'scene4',
                             consequences: {
                                 triggerEvent: '身份揭露'
                             }
@@ -220,6 +223,7 @@ export const useDreamStore = defineStore('dream', {
                             id: 'scene3_opt3',
                             text: '拍摄特写',
                             content: '你抓拍下关键证据...',
+                            nextSceneId: 'scene4',
                             consequences: {
                                 triggerEvent: '媒体战'
                             }
@@ -228,6 +232,7 @@ export const useDreamStore = defineStore('dream', {
                             id: 'scene3_opt4',
                             text: '依赖体温',
                             content: '在高烧中，你无意识地说出了真相...',
+                            nextSceneId: 'scene4',
                             consequences: {
                                 unlockClue: '父亲死亡真相'
                             }
@@ -238,6 +243,8 @@ export const useDreamStore = defineStore('dream', {
                     id: 'scene4',
                     title: '真相赌局',
                     description: '最后的对决，一切将在此揭晓...',
+                    image: sceneOneImage,
+                    canReplay: true,
                     options: [
                         {
                             id: 'scene4_opt1',
@@ -273,7 +280,7 @@ export const useDreamStore = defineStore('dream', {
                         }
                     ]
                 }
-            ]
+            ];
 
             this.endings = [
                 {
@@ -306,67 +313,83 @@ export const useDreamStore = defineStore('dream', {
                     description: '你继承了伯纳德的衣钵，成为新的暗影...',
                     type: 'HE'
                 }
-            ]
+            ];
         },
 
         selectOption(optionId: string): boolean {
-            const currentScene = this.currentScene
-            if (!currentScene) return false
+            const currentScene = this.currentScene;
+            if (!currentScene) return false;
 
-            const selectedOption = currentScene.options?.find(opt => opt.id === optionId)
-            if (!selectedOption) return false
+            const selectedOption = currentScene.options?.find(opt => opt.id === optionId);
+            if (!selectedOption) return false;
 
-            this.currentOption = selectedOption
-            this.showOptionDialog = true
+            // 记录用户选择
+            this.userChoices.push({
+                sceneId: this.currentSceneId,
+                optionId
+            });
+
+            this.currentOption = selectedOption;
+            this.showOptionDialog = true;
 
             // 处理选项后果
             if (selectedOption.consequences) {
-                const { unlockStoryline, triggerEnding, unlockClue, triggerEvent } = selectedOption.consequences
+                const { unlockStoryline, triggerEnding, unlockClue, triggerEvent } = selectedOption.consequences;
 
                 if (unlockStoryline && !this.unlockedStorylines.includes(unlockStoryline)) {
-                    this.unlockedStorylines.push(unlockStoryline)
+                    this.unlockedStorylines.push(unlockStoryline);
                 }
 
                 if (unlockClue && !this.collectedClues.includes(unlockClue)) {
-                    this.collectedClues.push(unlockClue)
+                    this.collectedClues.push(unlockClue);
                 }
 
                 if (triggerEvent === '记忆闪回') {
-                    this.memoryFlashbackCount++
+                    this.memoryFlashbackCount++;
                 }
 
                 // 检查是否触发特殊结局
                 if (this.harmToJiangCount >= 3) {
-                    this.activeEnding = 'dark_transformation'
+                    this.activeEnding = 'dark_transformation';
                 } else if (triggerEnding) {
-                    this.activeEnding = triggerEnding
+                    this.activeEnding = triggerEnding;
                 }
             }
 
-            return true
+            return true;
         },
 
         continueToNextScene(): boolean {
-            if (!this.currentOption?.consequences?.nextSceneId) {
-                this.showOptionDialog = false
-                this.currentOption = null
-                return false
+            if (!this.currentOption?.nextSceneId) {
+                this.showOptionDialog = false;
+                this.currentOption = null;
+                return false;
             }
 
-            this.currentSceneId = this.currentOption.consequences.nextSceneId
-            this.showOptionDialog = false
-            this.currentOption = null
-            return true
+            this.currentSceneId = this.currentOption.nextSceneId;
+            this.showOptionDialog = false;
+            this.currentOption = null;
+            return true;
         },
 
         // 检查是否满足特殊结局条件
         checkSpecialEndings() {
             if (this.hasCollectedAllDeathClues) {
-                this.unlockedStorylines.push('真相子弹')
+                this.unlockedStorylines.push('真相子弹');
             }
             if (this.memoryFlashbackCount >= 2) {
-                this.unlockedStorylines.push('时溯系统')
+                this.unlockedStorylines.push('时溯系统');
             }
+        },
+
+        // 重玩当前场景
+        replayCurrentScene() {
+            const currentChoices = this.userChoices.filter(choice => choice.sceneId === this.currentSceneId);
+            if (currentChoices.length > 0) {
+                this.userChoices = this.userChoices.filter(choice => choice.sceneId !== this.currentSceneId);
+            }
+            this.showOptionDialog = false;
+            this.currentOption = null;
         }
     }
-}) 
+}); 
