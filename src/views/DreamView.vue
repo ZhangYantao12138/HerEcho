@@ -202,19 +202,22 @@ onMounted(() => {
 .dream-container {
   min-height: 100vh;
   width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
   position: relative;
   background-color: #121212;
   color: white;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .background-image {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: 100vh;
   z-index: 1;
 }
 
@@ -247,6 +250,7 @@ onMounted(() => {
 .debug-panel pre {
   margin: 0;
   white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .effects-button {
@@ -306,7 +310,7 @@ onMounted(() => {
 .effects-content {
   padding: 15px;
   overflow-y: auto;
-  max-height: 50vh;
+  max-height: calc(70vh - 50px);
 }
 
 .no-effects {
@@ -325,22 +329,25 @@ onMounted(() => {
 }
 
 .content-container {
-  position: fixed;
+  position: absolute;
   bottom: 60px;
   left: 0;
   width: 100%;
   min-height: 33vh;
+  max-height: 50vh;
   background-color: rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;
   padding: 20px;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
   z-index: 5;
+  overflow-y: auto;
 }
 
 .content-container.playing {
   opacity: 0.7;
+  transform: translateY(10px);
 }
 
 .dream-header {
@@ -352,6 +359,7 @@ onMounted(() => {
   font-size: 24px;
   margin: 0 0 10px 0;
   font-weight: bold;
+  line-height: 1.3;
 }
 
 .dream-description {
@@ -359,6 +367,7 @@ onMounted(() => {
   font-size: 16px;
   line-height: 1.6;
   margin: 0;
+  opacity: 0.9;
 }
 
 .options-list {
@@ -366,7 +375,6 @@ onMounted(() => {
   flex-direction: column;
   gap: 12px;
   margin-top: 20px;
-  overflow-y: auto;
   padding-bottom: 10px;
 }
 
@@ -377,12 +385,17 @@ onMounted(() => {
   padding: 15px;
   cursor: pointer;
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 .option-item:hover {
   transform: translateY(-2px);
   background-color: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
+}
+
+.option-item:active {
+  transform: translateY(0);
 }
 
 .option-text {
@@ -394,14 +407,18 @@ onMounted(() => {
 .option-dialog-overlay {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
-  height: 100%;
+  max-width: 480px;
+  height: 100vh;
   background-color: rgba(0, 0, 0, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 20;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .option-dialog {
@@ -411,6 +428,8 @@ onMounted(() => {
   border-radius: 15px;
   padding: 25px;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .dialog-content {
@@ -455,11 +474,16 @@ onMounted(() => {
   cursor: pointer;
   font-size: 16px;
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .continue-button:hover {
   background-color: #c0392b;
+  transform: translateY(-2px);
+}
+
+.continue-button:active {
+  transform: translateY(0);
 }
 
 .back-button {
@@ -476,6 +500,16 @@ onMounted(() => {
   cursor: pointer;
   z-index: 10;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.back-button:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.back-button:active {
+  transform: scale(1);
 }
 
 .back-icon {
@@ -486,21 +520,26 @@ onMounted(() => {
 .ending-dialog-overlay {
   position: fixed;
   top: 0;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
-  height: 100%;
+  max-width: 480px;
+  height: 100vh;
   background-color: rgba(0, 0, 0, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 100;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .ending-dialog {
   background-color: rgba(30, 30, 30, 0.95);
   border-radius: 15px;
   padding: 30px;
-  max-width: 80%;
+  width: 90%;
+  max-width: 500px;
   text-align: center;
   color: white;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -510,17 +549,36 @@ onMounted(() => {
   color: #e74c3c;
   margin-bottom: 20px;
   font-size: 24px;
+  line-height: 1.3;
 }
 
 .ending-dialog p {
   font-size: 16px;
   line-height: 1.6;
   margin-bottom: 25px;
+  opacity: 0.9;
 }
 
 .ending-footer {
   margin-top: 30px;
   color: #666;
   font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .content-container {
+    min-height: 40vh;
+  }
+
+  .option-dialog, .ending-dialog {
+    width: 95%;
+    padding: 20px;
+  }
+
+  .effects-list {
+    width: calc(100% - 30px);
+    right: 50%;
+    transform: translateX(50%);
+  }
 }
 </style> 
