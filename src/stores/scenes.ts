@@ -34,7 +34,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'C', text: '你突然感到一股神秘的力量附身于你...', nextSceneId: 'scene2_rescue' }
       ]
     },
-    
+
     // 分镜1：订婚宴暗流
     'scene2_engagement': {
       id: 'scene2_engagement',
@@ -49,7 +49,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'D', text: '联系程聿怀', nextSceneId: 'scene3D_rescue' }
       ]
     },
-    
+
     // 分镜2：浴室囚牢
     'scene2_bathroom': {
       id: 'scene2_bathroom',
@@ -64,7 +64,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'D', text: '支票羞辱', nextSceneId: 'scene3H_explosion' }
       ]
     },
-    
+
     // 分镜3：暴雨救援
     'scene2_rescue': {
       id: 'scene2_rescue',
@@ -79,7 +79,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'D', text: '依赖体温', nextSceneId: 'scene3L_key' }
       ]
     },
-    
+
     // 分镜4：真相赌局
     'scene4_truth': {
       id: 'scene4_truth',
@@ -93,7 +93,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'C', text: '制造混乱', nextSceneId: 'ending_justice' }
       ]
     },
-    
+
     // 结局场景 - 这里只列举部分，其余可以继续添加
     'scene3A_spy': {
       id: 'scene3A_spy',
@@ -106,7 +106,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'B', text: '隐藏退走', nextSceneId: 'scene4_truth' }
       ]
     },
-    
+
     'scene3B_canary': {
       id: 'scene3B_canary',
       title: '你选择维持表面的平静，但代价是沉重的',
@@ -118,9 +118,9 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'B', text: '寻找突破', nextSceneId: 'scene4_truth' }
       ]
     },
-    
+
     // 可以继续添加更多分镜和结局场景...
-    
+
     // 结局
     'ending_phoenix': {
       id: 'ending_phoenix',
@@ -132,7 +132,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'A', text: '重新开始', nextSceneId: 'scene1' }
       ]
     },
-    
+
     'ending_puppet': {
       id: 'ending_puppet',
       title: '傀儡结局：失去自我',
@@ -143,7 +143,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'A', text: '重新开始', nextSceneId: 'scene1' }
       ]
     },
-    
+
     'ending_justice': {
       id: 'ending_justice',
       title: '审判结局：正义得到伸张',
@@ -154,7 +154,7 @@ export const useScenesStore = defineStore('scenes', () => {
         { id: 'A', text: '重新开始', nextSceneId: 'scene1' }
       ]
     },
-    
+
     'ending_canary': {
       id: 'ending_canary',
       title: '金丝雀挽歌：沦为宣传工具',
@@ -169,58 +169,58 @@ export const useScenesStore = defineStore('scenes', () => {
 
   // 当前分镜ID
   const currentSceneId = ref('scene1');
-  
+
   // 计算当前分镜数据
   const currentScene = computed(() => scenesData[currentSceneId.value]);
-  
+
   // 用户选择记录
-  const userChoices = ref<Array<{sceneId: string, optionId: string}>>([]);
-  
+  const userChoices = ref<Array<{ sceneId: string, optionId: string }>>([]);
+
   // 用户解锁的隐藏线索
   const unlockedSecrets = ref<Set<string>>(new Set());
-  
+
   // 选择选项方法
   function selectOption(optionId: string) {
     const currentOptions = currentScene.value.options;
     const selectedOption = currentOptions.find(option => option.id === optionId);
-    
+
     // 记录用户选择
     userChoices.value.push({
       sceneId: currentSceneId.value,
       optionId
     });
-    
+
     // 特殊选择处理 - 可以在这里添加解锁隐藏线索的逻辑
     if (currentSceneId.value === 'scene2_engagement' && optionId === 'A') {
       unlockedSecrets.value.add('spy_line'); // 解锁双面谍影线索
     }
-    
+
     // 如果有下一个场景ID，更新当前场景
     if (selectedOption && selectedOption.nextSceneId) {
       currentSceneId.value = selectedOption.nextSceneId;
       return true;
     }
-    
+
     return false;
   }
-  
+
   // 重播当前分镜
   function replayCurrentScene() {
     // 这里可以添加重置动画或其他逻辑
     console.log(`重播分镜: ${currentSceneId.value}`);
   }
-  
+
   // 重置到开始
   function resetToStart() {
     currentSceneId.value = 'scene1';
     userChoices.value = [];
   }
-  
+
   // 检查是否解锁了特定隐藏线索
   function hasUnlockedSecret(secretId: string): boolean {
     return unlockedSecrets.value.has(secretId);
   }
-  
+
   return {
     currentSceneId,
     currentScene,
