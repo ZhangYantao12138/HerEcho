@@ -26,7 +26,7 @@ const showEffectsList = ref(false);
 
 // 处理选项选择
 function selectOption(optionId: string) {
-  const success = dreamStore.selectOption(optionId);
+  dreamStore.selectOption(optionId);
 }
 
 // 继续到下一个分镜
@@ -34,7 +34,7 @@ function continueToNextScene() {
   isPlaying.value = true;
   
   setTimeout(() => {
-    const success = dreamStore.continueToNextScene();
+    dreamStore.continueToNextScene();
     isPlaying.value = false;
     
     // 如果有结局，返回首页

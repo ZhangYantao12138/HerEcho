@@ -7,7 +7,7 @@ import {
   RiAddCircleLine 
 } from '@remixicon/vue';
 
-const props = defineProps({
+defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
