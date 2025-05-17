@@ -50,17 +50,6 @@ const sceneInfo = {
   progress: 40
 };
 
-// 获取最新的两条消息用于收起状态显示
-const latestUserMessage = computed(() => {
-  const userMessages = messages.value.filter(m => m.isUser);
-  return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-});
-
-const latestCharacterMessage = computed(() => {
-  const characterMessages = messages.value.filter(m => !m.isUser);
-  return characterMessages.length > 0 ? characterMessages[characterMessages.length - 1] : null;
-});
-
 const progress = ref(sceneInfo.progress);
 const isCollapsed = ref(false); // 默认展开状态
 const chatContainerRef = ref<HTMLElement | null>(null);
@@ -168,7 +157,6 @@ onMounted(() => {
       class="chat-container" 
       ref="chatContainerRef"
       :class="{ 'collapsed': isCollapsed }"
-      v-if="!isCollapsed"
     >
       <div 
         v-for="message in messages" 
@@ -182,23 +170,10 @@ onMounted(() => {
       </div>
     </div>
     
-    <div class="collapsed-messages" v-if="isCollapsed">
-      <div class="user-message" v-if="latestUserMessage">
-        <div class="message-bubble">
-          <div class="message-content" v-html="latestUserMessage.content"></div>
-        </div>
-      </div>
-      <div class="character-message" v-if="latestCharacterMessage">
-        <div v-if="latestCharacterMessage.hasAudio" class="audio-icon">🔊</div>
-        <div class="message-bubble">
-          <div class="message-content" v-html="latestCharacterMessage.content"></div>
-        </div>
-      </div>
-    </div>
-    
     <ChatInput 
       @send-message="sendMessage" 
-      @select-option="selectOption" 
+      @select-option="selectOption"
+      :isCollapsed="isCollapsed"
     />
     <BottomNav />
   </div>
@@ -210,13 +185,16 @@ onMounted(() => {
   flex-direction: column;
   height: 100vh;
   background-color: #121a1a;
-  padding-bottom: 110px; /* 为底部输入栏和导航栏留出空间 */
+  padding-bottom: 58px;
   box-sizing: border-box;
   position: relative;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .character-bg {
-  flex: 1;
+  height: 50vh;
   position: relative;
   overflow: hidden;
   background-color: #1a2a2a;
@@ -281,6 +259,8 @@ onMounted(() => {
   color: #cccccc;
   font-size: 14px;
   cursor: pointer;
+  position: relative;
+  z-index: 10;
 }
 
 .arrow-icon {
@@ -299,16 +279,20 @@ onMounted(() => {
   background-color: rgba(26, 42, 42, 0.9);
   overflow-y: auto;
   padding: 10px 0;
-  max-height: 60vh;
+  transition: height 0.3s ease;
+  position: relative;
+  margin-bottom: 60px; /* 为输入框留出空间 */
 }
 
-.collapsed-messages {
-  width: 100%;
-  background-color: rgba(26, 42, 42, 0.9);
-  padding: 10px 15px;
+.chat-container:not(.collapsed) {
+  height: calc(100vh - 120px); /* 视口高度 - 其他元素高度 */
 }
 
-.message-container, .user-message, .character-message {
+.chat-container.collapsed {
+  height: calc(100vh - 60vh - 120px); /* 视口高度 - 背景图高度 - 其他元素高度 ，可以通调整这行来控制聊天框或背景图高度*/
+}
+
+.message-container {
   display: flex;
   margin: 8px 15px;
   align-items: flex-start;
