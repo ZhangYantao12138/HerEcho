@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory('/HerEcho/'),
   routes: [
     {
       path: '/',
@@ -10,7 +10,13 @@ const router = createRouter({
     {
       path: '/dream',
       name: 'dream',
-      component: () => import('../views/DreamView.vue')
+      component: () => import('../views/DreamHomeView.vue')
+    },
+    {
+      path: '/dream/scene/:storyId?',
+      name: 'dreamScene',
+      component: () => import('../views/DreamView.vue'),
+      props: true
     },
     {
       path: '/chat',
