@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { 
   RiMic2Line, 
+  RiKeyboardLine,
   RiMessage2Line, 
   RiAddCircleLine 
 } from '@remixicon/vue';
@@ -23,8 +24,12 @@ defineProps({
 
 const inputText = ref('');
 const showOptions = ref(false);
+const isVoiceMode = ref(false);
+const isRecording = ref(false);
+const recordingDuration = ref(0);
+const recordingTimer = ref<number | null>(null);
 
-const emit = defineEmits(['send-message', 'select-option']);
+const emit = defineEmits(['send-message', 'select-option', 'send-voice']);
 
 const options = ref([
   '我今天...有点想你。',
@@ -47,6 +52,38 @@ function selectOption(option: string) {
   emit('select-option', option);
   showOptions.value = false;
 }
+
+function toggleInputMode() {
+  isVoiceMode.value = !isVoiceMode.value;
+  if (isVoiceMode.value) {
+    inputText.value = '';
+  }
+}
+
+function startRecording() {
+  if (!isVoiceMode.value) return;
+  
+  isRecording.value = true;
+  recordingDuration.value = 0;
+  recordingTimer.value = setInterval(() => {
+    recordingDuration.value += 0.1;
+  }, 100) as unknown as number;
+}
+
+function stopRecording() {
+  if (!isRecording.value) return;
+  
+  isRecording.value = false;
+  if (recordingTimer.value) {
+    clearInterval(recordingTimer.value);
+    recordingTimer.value = null;
+  }
+  
+  if (recordingDuration.value >= 0.5) { // 最少录音0.5秒
+    emit('send-voice', recordingDuration.value);
+  }
+  recordingDuration.value = 0;
+}
 </script>
 
 <template>
@@ -65,24 +102,43 @@ function selectOption(option: string) {
       </div>
     </div>
     
-    <div class="input-wrapper">
-      <div class="voice-icon">
-        <RiMic2Line />
+    <div class="input-wrapper" :class="{ 'recording': isRecording }">
+      <div class="voice-icon" @click="toggleInputMode">
+        <RiMic2Line v-if="!isVoiceMode" />
+        <RiKeyboardLine v-else />
       </div>
-      <input 
-        type="text" 
-        v-model="inputText" 
-        placeholder="输入或选择消息发给TA，5s后自动回复"
-        @keyup.enter="sendMessage"
-      />
-      <div class="action-buttons">
-        <div class="chat-options" @click="toggleOptions">
-          <RiMessage2Line />
+      
+      <template v-if="!isVoiceMode">
+        <input 
+          type="text" 
+          v-model="inputText" 
+          placeholder="输入或选择消息发给TA，5s后自动回复"
+          @keyup.enter="sendMessage"
+        />
+        <div class="action-buttons">
+          <div class="chat-options" @click="toggleOptions">
+            <RiMessage2Line />
+          </div>
+          <div class="add-button" @click="sendMessage">
+            <RiAddCircleLine />
+          </div>
         </div>
-        <div class="add-button" @click="sendMessage">
-          <RiAddCircleLine />
+      </template>
+      
+      <template v-else>
+        <div 
+          class="voice-input-area"
+          @mousedown="startRecording"
+          @mouseup="stopRecording"
+          @touchstart.prevent="startRecording"
+          @touchend.prevent="stopRecording"
+        >
+          {{ isRecording ? '松开发送' : '按住说话' }}
+          <div v-if="isRecording" class="recording-duration">
+            {{ recordingDuration.toFixed(1) }}s
+          </div>
         </div>
-      </div>
+      </template>
     </div>
     
     <div v-if="showOptions" class="options-panel">
@@ -172,6 +228,11 @@ function selectOption(option: string) {
   margin: 0 auto;
   width: calc(100% - 30px);
   max-width: 480px;
+  transition: background-color 0.3s ease;
+}
+
+.input-wrapper.recording {
+  background-color: #42b883;
 }
 
 .voice-icon {
@@ -180,6 +241,12 @@ function selectOption(option: string) {
   margin-right: 10px;
   font-size: 20px;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.voice-icon:active {
+  transform: scale(0.95);
 }
 
 input {
@@ -245,5 +312,38 @@ input::placeholder {
 
 .option-item:hover {
   background-color: #333;
+}
+
+.voice-input-area {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #eee;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.recording-duration {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #fff;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.recording .voice-input-area {
+  animation: pulse 1s infinite;
 }
 </style> 

@@ -68,6 +68,40 @@ function selectOption(option: string) {
   }, 1000);
 }
 
+function handleVoiceMessage(duration: number) {
+  const voiceMessage = `(发送了一条 ${duration.toFixed(1)} 秒的语音消息)`;
+  messages.value.push({
+    id: Date.now(),
+    content: voiceMessage,
+    isUser: true,
+    hasAudio: true
+  });
+  
+  updateProgress();
+  scrollToBottom();
+  
+  // 模拟角色回复语音消息
+  setTimeout(() => {
+    const responses = [
+      "(轻笑) 你的声音真好听...",
+      "(认真听完) 嗯...我明白了",
+      "(温柔地) 继续说下去，我在听...",
+      "(轻声) 你说的每一个字，我都记在心里..."
+    ];
+    
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    messages.value.push({
+      id: Date.now(),
+      content: randomResponse,
+      isUser: false,
+      hasAudio: true
+    });
+    
+    updateProgress();
+    scrollToBottom();
+  }, 1500);
+}
+
 function addUserMessage(text: string) {
   messages.value.push({
     id: Date.now(),
@@ -173,6 +207,7 @@ onMounted(() => {
     <ChatInput 
       @send-message="sendMessage" 
       @select-option="selectOption"
+      @send-voice="handleVoiceMessage"
       :isCollapsed="isCollapsed"
     />
     <BottomNav />
