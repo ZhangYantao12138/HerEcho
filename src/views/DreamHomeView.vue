@@ -100,10 +100,6 @@ function closeDetails() {
     <!-- 页面头部 -->
     <div class="dream-header">
       <div class="page-title">叙梦</div>
-      <div class="header-icons">
-        <span class="icon">🔍</span>
-        <span class="icon">⚙️</span>
-      </div>
     </div>
     
     <!-- 故事卡片列表 -->
@@ -193,24 +189,11 @@ function closeDetails() {
 .dream-header {
   padding: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .page-title {
   font-size: 24px;
   font-weight: bold;
-}
-
-.header-icons {
-  display: flex;
-  gap: 15px;
-}
-
-.icon {
-  font-size: 20px;
-  cursor: pointer;
 }
 
 .dream-stories-container {

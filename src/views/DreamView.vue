@@ -24,21 +24,9 @@ const isPlaying = ref(false);
 // 是否显示特殊效果列表
 const showEffectsList = ref(false);
 
-// 调试信息
-const debugInfo = ref({
-  storyId,
-  storeInitialized: !!dreamStore,
-  currentSceneId: dreamStore.currentSceneId,
-  hasCurrentScene: !!dreamStore.currentScene,
-  sceneTitle: dreamStore.currentScene?.title || 'No title',
-  sceneDescription: dreamStore.currentScene?.description || 'No description',
-  optionsCount: dreamStore.currentScene?.options?.length || 0
-});
-
 // 处理选项选择
 function selectOption(optionId: string) {
   const success = dreamStore.selectOption(optionId);
-  console.log('选择选项结果:', success);
 }
 
 // 继续到下一个分镜
@@ -47,20 +35,8 @@ function continueToNextScene() {
   
   setTimeout(() => {
     const success = dreamStore.continueToNextScene();
-    console.log('继续到下一个场景结果:', success);
     isPlaying.value = false;
     
-    // 更新调试信息
-    debugInfo.value = {
-      storyId,
-      storeInitialized: !!dreamStore,
-      currentSceneId: dreamStore.currentSceneId,
-      hasCurrentScene: !!dreamStore.currentScene,
-      sceneTitle: dreamStore.currentScene?.title || 'No title',
-      sceneDescription: dreamStore.currentScene?.description || 'No description',
-      optionsCount: dreamStore.currentScene?.options?.length || 0
-    };
-
     // 如果有结局，返回首页
     if (dreamStore.activeEnding) {
       setTimeout(() => {
@@ -82,7 +58,6 @@ function goBack() {
 
 // 组件挂载时，重置到初始分镜
 onMounted(() => {
-  console.log('DreamView组件已挂载，故事ID:', storyId);
   if (!storyId) {
     router.push('/dream');
     return;
@@ -90,19 +65,6 @@ onMounted(() => {
   
   // 根据故事ID初始化场景
   dreamStore.initializeStory(storyId);
-  console.log('当前分镜ID:', dreamStore.currentSceneId);
-  console.log('当前分镜数据:', dreamStore.currentScene);
-  
-  // 更新调试信息
-  debugInfo.value = {
-    storyId,
-    storeInitialized: !!dreamStore,
-    currentSceneId: dreamStore.currentSceneId,
-    hasCurrentScene: !!dreamStore.currentScene,
-    sceneTitle: dreamStore.currentScene?.title || 'No title',
-    sceneDescription: dreamStore.currentScene?.description || 'No description',
-    optionsCount: dreamStore.currentScene?.options?.length || 0
-  };
 });
 </script>
 
@@ -116,12 +78,6 @@ onMounted(() => {
     <!-- 背景图片 -->
     <div class="background-image">
       <img :src="oneImage" alt="背景图片" />
-    </div>
-    
-    <!-- 调试信息 -->
-    <div class="debug-panel">
-      <h3>调试信息</h3>
-      <pre>{{ JSON.stringify(debugInfo, null, 2) }}</pre>
     </div>
     
     <!-- 特殊效果按钮 -->
@@ -151,6 +107,11 @@ onMounted(() => {
       <div class="dream-header">
         <h2 class="dream-title">{{ dreamStore.currentScene?.title || '加载中...' }}</h2>
         <p class="dream-description">{{ dreamStore.currentScene?.description || '请稍候...' }}</p>
+      </div>
+      
+      <!-- 再次观看按钮 -->
+      <div class="replay-button-container">
+        <button class="replay-button">再次观看</button>
       </div>
       
       <!-- 选项列表 -->
@@ -225,32 +186,6 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.debug-panel {
-  position: fixed;
-  top: 70px;
-  left: 10px;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: #11f011;
-  padding: 10px;
-  border-radius: 5px;
-  font-size: 12px;
-  max-width: 300px;
-  overflow: auto;
-  max-height: 300px;
-  z-index: 10;
-}
-
-.debug-panel h3 {
-  margin-top: 0;
-  color: white;
-}
-
-.debug-panel pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .effects-button {
@@ -487,7 +422,7 @@ onMounted(() => {
 }
 
 .back-button {
-  position: fixed;
+  position: absolute;
   top: 15px;
   left: 15px;
   width: 40px;
@@ -563,6 +498,32 @@ onMounted(() => {
   margin-top: 30px;
   color: #666;
   font-style: italic;
+}
+
+.replay-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+.replay-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.replay-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.replay-button:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 768px) {
