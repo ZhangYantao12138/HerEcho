@@ -48,6 +48,8 @@ function navigate(path: string) {
   z-index: 30;
   height: 48px;
   box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .nav-item {

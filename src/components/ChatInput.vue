@@ -7,7 +7,7 @@ import {
   RiAddCircleLine 
 } from '@remixicon/vue';
 
-defineProps({
+const props = defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
@@ -28,8 +28,9 @@ const isVoiceMode = ref(false);
 const isRecording = ref(false);
 const recordingDuration = ref(0);
 const recordingTimer = ref<number | null>(null);
+const isKeyboardVisible = ref(false);
 
-const emit = defineEmits(['send-message', 'select-option', 'send-voice']);
+const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'keyboard-toggle']);
 
 const options = ref([
   '我今天...有点想你。',
@@ -41,11 +42,15 @@ function sendMessage() {
   if (inputText.value.trim()) {
     emit('send-message', inputText.value.trim());
     inputText.value = '';
+    hideKeyboard();
   }
 }
 
 function toggleOptions() {
   showOptions.value = !showOptions.value;
+  if (showOptions.value) {
+    hideKeyboard();
+  }
 }
 
 function selectOption(option: string) {
@@ -57,6 +62,7 @@ function toggleInputMode() {
   isVoiceMode.value = !isVoiceMode.value;
   if (isVoiceMode.value) {
     inputText.value = '';
+    hideKeyboard();
   }
 }
 
@@ -84,10 +90,23 @@ function stopRecording() {
   }
   recordingDuration.value = 0;
 }
+
+function showKeyboard() {
+  if (isVoiceMode.value) return;
+  isKeyboardVisible.value = true;
+  emit('keyboard-toggle', true);
+}
+
+function hideKeyboard() {
+  if (isKeyboardVisible.value) {
+    isKeyboardVisible.value = false;
+    emit('keyboard-toggle', false);
+  }
+}
 </script>
 
 <template>
-  <div class="input-container">
+  <div class="input-container" :class="{ 'keyboard-active': isKeyboardVisible }">
     <div v-if="isCollapsed && lastUserMessage && lastCharacterMessage" class="collapsed-messages">
       <div class="user-message">
         <div class="message-bubble">
@@ -114,6 +133,8 @@ function stopRecording() {
           v-model="inputText" 
           placeholder="输入或选择消息发给TA，5s后自动回复"
           @keyup.enter="sendMessage"
+          @focus="showKeyboard"
+          @blur="hideKeyboard"
         />
         <div class="action-buttons">
           <div class="chat-options" @click="toggleOptions">
@@ -152,6 +173,50 @@ function stopRecording() {
       </div>
     </div>
   </div>
+  
+  <!-- 虚拟键盘与输入框分离，使用fixed定位在底部 -->
+  <div v-if="isKeyboardVisible" class="virtual-keyboard">
+    <div class="keyboard-row">
+      <div class="key">Q</div>
+      <div class="key">W</div>
+      <div class="key">E</div>
+      <div class="key">R</div>
+      <div class="key">T</div>
+      <div class="key">Y</div>
+      <div class="key">U</div>
+      <div class="key">I</div>
+      <div class="key">O</div>
+      <div class="key">P</div>
+    </div>
+    <div class="keyboard-row">
+      <div class="key">A</div>
+      <div class="key">S</div>
+      <div class="key">D</div>
+      <div class="key">F</div>
+      <div class="key">G</div>
+      <div class="key">H</div>
+      <div class="key">J</div>
+      <div class="key">K</div>
+      <div class="key">L</div>
+    </div>
+    <div class="keyboard-row">
+      <div class="key wide">Shift</div>
+      <div class="key">Z</div>
+      <div class="key">X</div>
+      <div class="key">C</div>
+      <div class="key">V</div>
+      <div class="key">B</div>
+      <div class="key">N</div>
+      <div class="key">M</div>
+      <div class="key wide">删除</div>
+    </div>
+    <div class="keyboard-row">
+      <div class="key">符号</div>
+      <div class="key">123</div>
+      <div class="key extra-wide">空格</div>
+      <div class="key wide">发送</div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -160,10 +225,15 @@ function stopRecording() {
   bottom: 48px; /* 底部导航栏的高度 */
   left: 0;
   right: 0;
-  padding: 10px 0;
   background-color: #121a1a;
   width: 100%;
   z-index: 20;
+  transition: bottom 0.3s ease;
+}
+
+/* 当键盘激活时，移动输入框到键盘上方 */
+.input-container.keyboard-active {
+  bottom: 170px; /* 键盘高度 */
 }
 
 .collapsed-messages {
@@ -225,7 +295,7 @@ function stopRecording() {
   border-radius: 30px;
   padding: 8px 15px;
   color: #999;
-  margin: 0 auto;
+  margin: 10px auto;
   width: calc(100% - 30px);
   max-width: 480px;
   transition: background-color 0.3s ease;
@@ -292,10 +362,11 @@ input::placeholder {
   border-radius: 10px 10px 0 0;
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
   padding: 10px;
-  z-index: 5;
+  z-index: 15;
   width: calc(100% - 30px);
   margin: 0 auto;
   left: 15px;
+  max-width: 480px;
 }
 
 .option-item {
@@ -304,6 +375,9 @@ input::placeholder {
   font-size: 14px;
   cursor: pointer;
   color: #eee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .option-item:last-child {
@@ -345,5 +419,55 @@ input::placeholder {
 
 .recording .voice-input-area {
   animation: pulse 1s infinite;
+}
+
+.virtual-keyboard {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: #2a2a2a;
+  padding: 5px 0;
+  z-index: 19; /* 确保键盘低于导航栏 */
+  border-top: 1px solid #444;
+  max-width: 480px;
+  margin: 0 auto;
+  height: 170px;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0;
+  padding: 0 5px;
+}
+
+.key {
+  width: 30px;
+  height: 36px;
+  background-color: #3a3a3a;
+  border-radius: 5px;
+  margin: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  user-select: none;
+  flex: 1;
+  max-width: 10%;
+  cursor: pointer;
+}
+
+.key:active {
+  background-color: #555;
+}
+
+.key.wide {
+  max-width: 15%;
+}
+
+.key.extra-wide {
+  max-width: 40%;
 }
 </style> 

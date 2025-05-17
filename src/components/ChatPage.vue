@@ -53,6 +53,7 @@ const sceneInfo = {
 const progress = ref(sceneInfo.progress);
 const isCollapsed = ref(false); // 默认展开状态
 const chatContainerRef = ref<HTMLElement | null>(null);
+const isKeyboardVisible = ref(false); // 添加键盘可见状态
 
 function sendMessage(text: string) {
   addUserMessage(text);
@@ -153,6 +154,10 @@ function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
 }
 
+function handleKeyboardToggle(visible: boolean) {
+  isKeyboardVisible.value = visible;
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -162,7 +167,11 @@ onMounted(() => {
   <div class="chat-page">
     <ChatHeader roleName="羌青瓷" />
     
-    <div class="character-bg" v-if="isCollapsed">
+    <div 
+      class="character-bg" 
+      v-if="isCollapsed"
+      :class="{ 'shrink': isKeyboardVisible }"
+    >
       <img :src="bgImage" alt="羌青瓷" class="character-image" />
     </div>
     
@@ -208,6 +217,7 @@ onMounted(() => {
       @send-message="sendMessage" 
       @select-option="selectOption"
       @send-voice="handleVoiceMessage"
+      @keyboard-toggle="handleKeyboardToggle"
       :isCollapsed="isCollapsed"
     />
     <BottomNav />
@@ -220,7 +230,7 @@ onMounted(() => {
   flex-direction: column;
   height: 100vh;
   background-color: #121a1a;
-  padding-bottom: 58px;
+  padding-bottom: 48px; /* 底部导航栏高度 */
   box-sizing: border-box;
   position: relative;
   max-width: 480px;
@@ -233,6 +243,11 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   background-color: #1a2a2a;
+  transition: height 0.3s ease;
+}
+
+.character-bg.shrink {
+  height: 30vh;
 }
 
 .character-image {
@@ -316,7 +331,7 @@ onMounted(() => {
   padding: 10px 0;
   transition: height 0.3s ease;
   position: relative;
-  margin-bottom: 60px; /* 为输入框留出空间 */
+  margin-bottom: 58px; /* 为输入框留出空间 */
 }
 
 .chat-container:not(.collapsed) {
@@ -324,7 +339,7 @@ onMounted(() => {
 }
 
 .chat-container.collapsed {
-  height: calc(100vh - 60vh - 120px); /* 视口高度 - 背景图高度 - 其他元素高度 ，可以通调整这行来控制聊天框或背景图高度*/
+  height: calc(100vh - 60vh - 120px); /* 视口高度 - 背景图高度 - 其他元素高度 */
 }
 
 .message-container {
