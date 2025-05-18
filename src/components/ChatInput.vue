@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, reactive } from 'vue';
 import { 
   RiMic2Line, 
   RiKeyboardLine,
   RiMessage2Line, 
   RiAddCircleLine 
 } from '@remixicon/vue';
+import { sendMessageToDeepSeek } from '../services/deepseekService';
 
 defineProps({
   isCollapsed: {
@@ -29,20 +30,52 @@ const isRecording = ref(false);
 const recordingDuration = ref(0);
 const recordingTimer = ref<number | null>(null);
 const isKeyboardVisible = ref(false);
+const isProcessing = ref(false);
 
-const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'keyboard-toggle']);
+const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'keyboard-toggle', 'ai-response']);
 
 const options = ref([
-  '我今天...有点想你。',
-  '真的吗？',
-  '你靠近一点...'
+  '羌青瓷，你还记得我们第一次相遇吗？',
+  '(轻轻握住你的手) 我很想你...',
+  '为什么当年你要消除我的记忆？',
+  '你能告诉我更多关于莱诺家族的事吗？'
 ]);
 
-function sendMessage() {
+async function sendMessage() {
   if (inputText.value.trim()) {
-    emit('send-message', inputText.value.trim());
+    const userMessage = inputText.value.trim();
+    emit('send-message', userMessage);
     inputText.value = '';
     hideKeyboard();
+    
+    // 调用DeepSeek API获取回复
+    try {
+      isProcessing.value = true;
+      const aiResponse = await sendMessageToDeepSeek(userMessage);
+      emit('ai-response', aiResponse);
+    } catch (error) {
+      console.error('获取AI回复失败:', error);
+      emit('ai-response', '(神情黯淡) 抱歉，聿怀，我现在有些恍惚，可以稍后再谈吗？');
+    } finally {
+      isProcessing.value = false;
+    }
+  }
+}
+
+async function selectOption(option: string) {
+  emit('select-option', option);
+  showOptions.value = false;
+  
+  // 调用DeepSeek API获取回复
+  try {
+    isProcessing.value = true;
+    const aiResponse = await sendMessageToDeepSeek(option);
+    emit('ai-response', aiResponse);
+  } catch (error) {
+    console.error('获取AI回复失败:', error);
+    emit('ai-response', '(轻轻叹息) 聿怀，我们的连接似乎出了些问题，能稍后再谈吗？');
+  } finally {
+    isProcessing.value = false;
   }
 }
 
@@ -51,11 +84,6 @@ function toggleOptions() {
   if (showOptions.value) {
     hideKeyboard();
   }
-}
-
-function selectOption(option: string) {
-  emit('select-option', option);
-  showOptions.value = false;
 }
 
 function toggleInputMode() {
@@ -76,7 +104,7 @@ function startRecording() {
   }, 100) as unknown as number;
 }
 
-function stopRecording() {
+async function stopRecording() {
   if (!isRecording.value) return;
   
   isRecording.value = false;
@@ -87,6 +115,19 @@ function stopRecording() {
   
   if (recordingDuration.value >= 0.5) { // 最少录音0.5秒
     emit('send-voice', recordingDuration.value);
+    
+    // 这里可以添加语音识别功能，将语音转为文本后调用DeepSeek API
+    // 目前只是模拟一个简单的回复
+    try {
+      isProcessing.value = true;
+      const aiResponse = await sendMessageToDeepSeek("程聿怀发送了一段语音消息，听起来很想念你");
+      emit('ai-response', aiResponse);
+    } catch (error) {
+      console.error('获取AI回复失败:', error);
+      emit('ai-response', '(微微歪头) 聿怀，你的声音有些模糊，能再说一次吗？');
+    } finally {
+      isProcessing.value = false;
+    }
   }
   recordingDuration.value = 0;
 }
@@ -121,7 +162,7 @@ function hideKeyboard() {
       </div>
     </div>
     
-    <div class="input-wrapper" :class="{ 'recording': isRecording }">
+    <div class="input-wrapper" :class="{ 'recording': isRecording, 'processing': isProcessing }">
       <div class="voice-icon" @click="toggleInputMode">
         <RiMic2Line v-if="!isVoiceMode" />
         <RiKeyboardLine v-else />
@@ -131,16 +172,17 @@ function hideKeyboard() {
         <input 
           type="text" 
           v-model="inputText" 
-          placeholder="输入或选择消息发给TA，5s后自动回复"
+          placeholder="以程聿怀的身份与羌青瓷对话..."
           @keyup.enter="sendMessage"
           @focus="showKeyboard"
           @blur="hideKeyboard"
+          :disabled="isProcessing"
         />
         <div class="action-buttons">
-          <div class="chat-options" @click="toggleOptions">
+          <div class="chat-options" @click="toggleOptions" :class="{ 'disabled': isProcessing }">
             <RiMessage2Line />
           </div>
-          <div class="add-button" @click="sendMessage">
+          <div class="add-button" @click="sendMessage" :class="{ 'disabled': isProcessing }">
             <RiAddCircleLine />
           </div>
         </div>
@@ -153,8 +195,9 @@ function hideKeyboard() {
           @mouseup="stopRecording"
           @touchstart.prevent="startRecording"
           @touchend.prevent="stopRecording"
+          :class="{ 'disabled': isProcessing }"
         >
-          {{ isRecording ? '松开发送' : '按住说话' }}
+          {{ isRecording ? '松开发送' : (isProcessing ? '羌青瓷思考中...' : '按住说话') }}
           <div v-if="isRecording" class="recording-duration">
             {{ recordingDuration.toFixed(1) }}s
           </div>
@@ -168,6 +211,7 @@ function hideKeyboard() {
         :key="index" 
         class="option-item"
         @click="selectOption(option)"
+        :class="{ 'disabled': isProcessing }"
       >
         {{ option }}
       </div>
@@ -214,7 +258,7 @@ function hideKeyboard() {
       <div class="key">符号</div>
       <div class="key">123</div>
       <div class="key extra-wide">空格</div>
-      <div class="key wide">发送</div>
+      <div class="key wide" @click="sendMessage" :class="{ 'disabled': isProcessing }">发送</div>
     </div>
   </div>
 </template>
@@ -305,6 +349,10 @@ function hideKeyboard() {
   background-color: #42b883;
 }
 
+.input-wrapper.processing {
+  background-color: #3498db;
+}
+
 .voice-icon {
   display: flex;
   align-items: center;
@@ -337,6 +385,10 @@ input::placeholder {
   color: #777;
 }
 
+input:disabled {
+  opacity: 0.7;
+}
+
 .action-buttons {
   display: flex;
   align-items: center;
@@ -351,6 +403,11 @@ input::placeholder {
   cursor: pointer;
   font-size: 22px;
   flex-shrink: 0;
+}
+
+.chat-options.disabled, .add-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .options-panel {
@@ -388,6 +445,11 @@ input::placeholder {
   background-color: #333;
 }
 
+.option-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .voice-input-area {
   flex: 1;
   text-align: center;
@@ -397,6 +459,11 @@ input::placeholder {
   cursor: pointer;
   user-select: none;
   position: relative;
+}
+
+.voice-input-area.disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .recording-duration {
@@ -469,5 +536,10 @@ input::placeholder {
 
 .key.extra-wide {
   max-width: 40%;
+}
+
+.key.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style> 
