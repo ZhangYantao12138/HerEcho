@@ -35,9 +35,10 @@ const isProcessing = ref(false);
 const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'keyboard-toggle', 'ai-response']);
 
 const options = ref([
-  '我今天...有点想你。',
-  '真的吗？',
-  '你靠近一点...'
+  '羌青瓷，你还记得我们第一次相遇吗？',
+  '(轻轻握住你的手) 我很想你...',
+  '为什么当年你要消除我的记忆？',
+  '你能告诉我更多关于莱诺家族的事吗？'
 ]);
 
 async function sendMessage() {
@@ -54,7 +55,7 @@ async function sendMessage() {
       emit('ai-response', aiResponse);
     } catch (error) {
       console.error('获取AI回复失败:', error);
-      emit('ai-response', '抱歉，我现在无法回应，请稍后再试。');
+      emit('ai-response', '(神情黯淡) 抱歉，聿怀，我现在有些恍惚，可以稍后再谈吗？');
     } finally {
       isProcessing.value = false;
     }
@@ -72,7 +73,7 @@ async function selectOption(option: string) {
     emit('ai-response', aiResponse);
   } catch (error) {
     console.error('获取AI回复失败:', error);
-    emit('ai-response', '抱歉，我现在无法回应，请稍后再试。');
+    emit('ai-response', '(轻轻叹息) 聿怀，我们的连接似乎出了些问题，能稍后再谈吗？');
   } finally {
     isProcessing.value = false;
   }
@@ -119,11 +120,11 @@ async function stopRecording() {
     // 目前只是模拟一个简单的回复
     try {
       isProcessing.value = true;
-      const aiResponse = await sendMessageToDeepSeek("用户发送了一段语音消息");
+      const aiResponse = await sendMessageToDeepSeek("程聿怀发送了一段语音消息，听起来很想念你");
       emit('ai-response', aiResponse);
     } catch (error) {
       console.error('获取AI回复失败:', error);
-      emit('ai-response', '抱歉，我现在无法回应，请稍后再试。');
+      emit('ai-response', '(微微歪头) 聿怀，你的声音有些模糊，能再说一次吗？');
     } finally {
       isProcessing.value = false;
     }
@@ -171,7 +172,7 @@ function hideKeyboard() {
         <input 
           type="text" 
           v-model="inputText" 
-          placeholder="输入或选择消息发给TA，AI将自动回复"
+          placeholder="以程聿怀的身份与羌青瓷对话..."
           @keyup.enter="sendMessage"
           @focus="showKeyboard"
           @blur="hideKeyboard"
@@ -196,7 +197,7 @@ function hideKeyboard() {
           @touchend.prevent="stopRecording"
           :class="{ 'disabled': isProcessing }"
         >
-          {{ isRecording ? '松开发送' : (isProcessing ? 'AI思考中...' : '按住说话') }}
+          {{ isRecording ? '松开发送' : (isProcessing ? '羌青瓷思考中...' : '按住说话') }}
           <div v-if="isRecording" class="recording-duration">
             {{ recordingDuration.toFixed(1) }}s
           </div>

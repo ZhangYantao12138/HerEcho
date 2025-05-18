@@ -11,7 +11,7 @@ import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekSer
 import bgImageSrc from '../assets/bg.png';
 const bgImage = bgImageSrc;
 
-// 更新消息内容以匹配截图
+// 更新消息内容以符合羌青瓷和程聿怀的角色扮演场景
 const messages = ref([
   { 
     id: 1, 
@@ -21,7 +21,7 @@ const messages = ref([
   },
   { 
     id: 2, 
-    content: '(伸手环住他的腰，将脸埋进他的后背)',
+    content: '(伸手环住他的腰，将脸埋进他的后背) 羌青瓷，我来了。',
     isUser: true,
     hasAudio: false
   },
@@ -33,13 +33,13 @@ const messages = ref([
   },
   { 
     id: 4, 
-    content: '(伸手搭住他的膝子，凑近他的耳边轻声说) "我今天......有点想你。"',
+    content: '(伸手搭住他的肩膀，凑近他的耳边轻声说) "我今天......有点想你。"',
     isUser: true,
     hasAudio: false
   },
   { 
     id: 5, 
-    content: '(喉结滚动，轻笑着将你推开一些，与你四目相对，眼中带着笑意) "哦？是吗？我还以为你巴不得离我远点呢。"',
+    content: '(喉结滚动，轻笑着将你推开一些，与你四目相对，眼中带着笑意) "哦？是吗？我还以为程医生巴不得离我远点呢。"',
     isUser: false,
     hasAudio: true
   }
@@ -47,8 +47,8 @@ const messages = ref([
 
 // 情节信息
 const sceneInfo = {
-  title: '（番外）你发现羌青瓷接近你别有目的',
-  stage: '初步相识',
+  title: '（番外）你与羌青瓷重逢后的日常',
+  stage: '相爱阶段',
   progress: 40
 };
 
@@ -164,7 +164,7 @@ function clearChat() {
   messages.value = [
     { 
       id: Date.now(), 
-      content: '(优雅地站在窗边，看着窗外的风景) "又见面了，有什么想和我聊的吗？"',
+      content: '(优雅地站在窗边，看着窗外的风景，听到你进来的脚步声，转身微笑) "聿怀，你来了。有什么想和我聊的吗？"',
       isUser: false,
       hasAudio: true
     }
