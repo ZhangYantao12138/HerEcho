@@ -12,14 +12,6 @@ defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
-  },
-  lastUserMessage: {
-    type: Object,
-    default: null
-  },
-  lastCharacterMessage: {
-    type: Object,
-    default: null
   }
 });
 
@@ -148,20 +140,6 @@ function hideKeyboard() {
 
 <template>
   <div class="input-container" :class="{ 'keyboard-active': isKeyboardVisible }">
-    <div v-if="isCollapsed && lastUserMessage && lastCharacterMessage" class="collapsed-messages">
-      <div class="user-message">
-        <div class="message-bubble">
-          <div class="message-content" v-html="lastUserMessage.content"></div>
-        </div>
-      </div>
-      <div class="character-message">
-        <div v-if="lastCharacterMessage.hasAudio" class="audio-icon">🔊</div>
-        <div class="message-bubble">
-          <div class="message-content" v-html="lastCharacterMessage.content"></div>
-        </div>
-      </div>
-    </div>
-    
     <div class="input-wrapper" :class="{ 'recording': isRecording, 'processing': isProcessing }">
       <div class="voice-icon" @click="toggleInputMode">
         <RiMic2Line v-if="!isVoiceMode" />
@@ -278,58 +256,6 @@ function hideKeyboard() {
 /* 当键盘激活时，移动输入框到键盘上方 */
 .input-container.keyboard-active {
   bottom: 170px; /* 键盘高度 */
-}
-
-.collapsed-messages {
-  padding: 0 15px 10px;
-  background-color: #121a1a;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-message, .character-message {
-  display: flex;
-  margin: 5px 0;
-  align-items: flex-start;
-}
-
-.user-message {
-  justify-content: flex-end;
-}
-
-.character-message {
-  justify-content: flex-start;
-}
-
-.message-bubble {
-  max-width: 85%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  word-break: break-word;
-}
-
-.user-message .message-bubble {
-  background-color: #ffffff;
-  color: #1a1a1a;
-  border-top-right-radius: 0;
-}
-
-.character-message .message-bubble {
-  background-color: #1a1a1a;
-  color: #ffffff;
-  border-top-left-radius: 0;
-}
-
-.message-content {
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.audio-icon {
-  margin-right: 8px;
-  color: #cccccc;
-  font-size: 16px;
-  margin-top: 5px;
 }
 
 .input-wrapper {
