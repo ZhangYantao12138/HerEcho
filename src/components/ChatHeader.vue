@@ -1,134 +1,190 @@
 <script setup lang="ts">
-import { RiArrowLeftSLine } from '@remixicon/vue';
-import { useRouter } from 'vue-router';
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { characters } from '../config/characters';
+import type { Character } from '../types/character';
 
-const router = useRouter();
-const isTestingApi = ref(false);
+const props = defineProps<{
+  currentCharacter: Character;
+}>();
 
-// 定义props
-defineProps({
-  roleName: {
-    type: String,
-    default: '羌青瓷'
+const emit = defineEmits<{
+  (e: 'testApi'): void;
+  (e: 'changeCharacter', characterId: string): void;
+}>();
+
+const showCharacterList = ref(false);
+const characterSelectorRef = ref<HTMLElement | null>(null);
+
+const handleCharacterChange = (characterId: string) => {
+  emit('changeCharacter', characterId);
+  showCharacterList.value = false;
+};
+
+// 处理点击外部区域
+const handleClickOutside = (event: MouseEvent) => {
+  if (
+    characterSelectorRef.value && 
+    !characterSelectorRef.value.contains(event.target as Node) &&
+    showCharacterList.value
+  ) {
+    showCharacterList.value = false;
   }
+};
+
+// 添加和移除事件监听器
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
 });
 
-function goBack() {
-  router.go(-1);
-}
-
-async function testApiConnection() {
-  isTestingApi.value = true;
-  try {
-    // 触发事件让父组件处理API测试
-    emit('test-api');
-  } finally {
-    setTimeout(() => {
-      isTestingApi.value = false;
-    }, 2000);
-  }
-}
-
-const emit = defineEmits(['test-api']);
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
-  <div class="header-container">
-    <div class="back-button" @click="goBack">
-      <RiArrowLeftSLine />
+  <div class="chat-header">
+    <div 
+      ref="characterSelectorRef"
+      class="character-selector" 
+      @click.stop="showCharacterList = !showCharacterList"
+    >
+      <img :src="currentCharacter.avatar" :alt="currentCharacter.name" class="character-avatar">
+      <span class="character-name">{{ currentCharacter.name }}</span>
+      <div class="dropdown-arrow" :class="{ 'active': showCharacterList }">▼</div>
+      
+      <!-- 角色列表下拉框 -->
+      <div 
+        v-if="showCharacterList" 
+        class="character-list"
+        @click.stop
+      >
+        <div
+          v-for="character in characters"
+          :key="character.id"
+          class="character-item"
+          :class="{ 'active': character.id === currentCharacter.id }"
+          @click="handleCharacterChange(character.id)"
+        >
+          <img :src="character.avatar" :alt="character.name" class="character-avatar-small">
+          <span>{{ character.name }}</span>
+        </div>
+      </div>
     </div>
-    <div class="role-name">{{ roleName }}</div>
-    <div class="test-api-button" @click="testApiConnection" v-if="!isTestingApi">
-      <span class="test-text">测试API</span>
-    </div>
-    <div class="test-api-button testing" v-else>
-      <div class="loading-spinner"></div>
-      <span class="test-text">测试中...</span>
+    
+    <div class="header-actions">
+      <button class="test-api-btn" @click="emit('testApi')">
+        测试API
+      </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.header-container {
+.chat-header {
+  height: 50px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  background-color: #1b3333; /* 调整为深蓝绿色/深青色 */
-  color: white;
-  font-size: 18px;
-  position: sticky;
-  top: 0;
+  padding: 0 15px;
+  background-color: rgba(26, 42, 42, 0.6);
+  backdrop-filter: blur(10px);
+  position: relative;
   z-index: 10;
-  height: 50px;
-  box-sizing: border-box;
-  position: relative; /* 添加相对定位 */
 }
 
-.back-button {
-  font-size: 24px;
-  cursor: pointer;
-  width: 30px;
-  flex-shrink: 0;
-  text-align: left;
-  position: relative; /* 添加相对定位 */
-  z-index: 2; /* 确保在role-name之上 */
-}
-
-.role-name {
-  font-weight: 600;
-  font-size: 18px;
-  position: absolute; /* 使用绝对定位 */
-  left: 50%; /* 水平居中 */
-  top: 50%; /* 垂直居中 */
-  transform: translate(-50%, -50%); /* 完全居中 */
-  z-index: 1; /* 确保在底层 */
-  width: auto; /* 自适应宽度 */
-  white-space: nowrap; /* 防止文字换行 */
-}
-
-.test-api-button {
-  background-color: rgba(66, 184, 131, 0.2);
-  color: #42b883;
-  border: 1px solid #42b883;
-  border-radius: 4px;
-  padding: 5px 12px; /* 稍微增加一点内边距补偿图标的移除 */
-  font-size: 12px;
-  cursor: pointer;
+.character-selector {
   display: flex;
   align-items: center;
-  justify-content: center; /* 添加居中对齐 */
-  transition: all 0.2s ease;
-  flex-shrink: 0;
+  cursor: pointer;
   position: relative;
-  z-index: 2;
+  padding: 5px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
 }
 
-.test-api-button:hover {
-  background-color: rgba(66, 184, 131, 0.3);
+.character-selector:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-.test-api-button.testing {
-  background-color: rgba(66, 184, 131, 0.1);
-  cursor: not-allowed;
-}
-
-.loading-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid transparent;
-  border-top-color: #42b883;
+.character-avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  object-fit: cover;
+  margin-right: 10px;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.character-name {
+  color: #ffffff;
+  font-size: 16px;
+  margin-right: 8px;
 }
 
-.test-text {
-  white-space: nowrap;
+.dropdown-arrow {
+  color: #ffffff;
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+
+.dropdown-arrow.active {
+  transform: rotate(180deg);
+}
+
+.character-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 200px;
+  background-color: rgba(26, 42, 42, 0.95);
+  border-radius: 8px;
+  padding: 8px;
+  margin-top: 5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.character-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  color: #ffffff;
+}
+
+.character-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.character-item.active {
+  background-color: rgba(66, 184, 131, 0.2);
+}
+
+.character-avatar-small {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 8px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.test-api-btn {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.test-api-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 </style> 

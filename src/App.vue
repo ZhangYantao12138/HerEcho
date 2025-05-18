@@ -1,40 +1,29 @@
 <script setup lang="ts">
+// App.vue
 </script>
 
 <template>
-  <div class="app-container">
-    <router-view />
-  </div>
+  <router-view></router-view>
 </template>
 
 <style>
-* {
+body {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
-  font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #1a1a1a;
+  color: #ffffff;
 }
 
-html, body {
-  height: 100%;
-  background-color: #121a1a;
-  color: #333;
-  overflow: hidden;
-}
-
-.app-container {
+#app {
+  width: 100%;
   height: 100vh;
-  max-width: 480px;
-  margin: 0 auto;
-  position: relative;
   overflow: hidden;
 }
 
-/* 移动端适配 */
-@media screen and (max-width: 480px) {
-  .app-container {
-    width: 100%;
-  }
+* {
+  box-sizing: border-box;
 }
 </style>
