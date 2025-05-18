@@ -226,80 +226,75 @@ onMounted(() => {
 
 <template>
   <div class="chat-page">
-    <ChatHeader roleName="羌青瓷" />
-    
-    <!-- 添加API测试按钮 -->
-    <div class="test-api-button" @click="testApiConnection" v-if="!isTestingApi">
-      <RiTestTubeLine />
-      <span class="test-text">测试API</span>
-    </div>
-    <div class="test-api-button testing" v-else>
-      <div class="loading-spinner"></div>
-      <span class="test-text">测试中...</span>
+    <!-- 固定背景图 -->
+    <div class="background-fixed">
+      <img :src="bgImage" alt="羌青瓷" />
     </div>
     
-    <div 
-      class="character-bg" 
-      v-if="isCollapsed"
-      :class="{ 'shrink': isKeyboardVisible }"
-    >
-      <img :src="bgImage" alt="羌青瓷" class="character-image" />
-    </div>
-    
-    <!-- 情节信息区域 - 仅在展开状态显示 -->
-    <div class="scene-container" v-if="!isCollapsed">
-      <div class="scene-info">
-        <div class="scene-text">情节：{{ sceneInfo.title }}</div>
-        <div class="scene-stage">{{ sceneInfo.stage }}</div>
+    <div class="content-wrapper">
+      <ChatHeader 
+        roleName="羌青瓷" 
+        @test-api="testApiConnection"
+      />
+      
+      <!-- 情节信息区域 -->
+      <div class="scene-container" v-if="!isCollapsed">
+        <div class="scene-info">
+          <div class="scene-text">情节：{{ sceneInfo.title }}</div>
+          <div class="scene-stage">{{ sceneInfo.stage }}</div>
+        </div>
+        
+        <div class="progress-section">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+          </div>
+        </div>
       </div>
       
-      <div class="progress-section">
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+      <!-- 聊天容器和控制栏的包装器 -->
+      <div class="chat-wrapper" :class="{ 'collapsed': isCollapsed }">
+        <div class="toggle-bar">
+          <div class="clear-chat" @click="showClearDialog">
+            <RiDeleteBin2Line />
+          </div>
+          <div class="toggle-section" @click="toggleCollapse">
+            <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
+            <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">
+              <RiArrowUpSLine />
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-    
-    <div class="toggle-bar">
-      <div class="clear-chat" @click="showClearDialog">
-        <RiDeleteBin2Line />
-      </div>
-      <div class="toggle-section" @click="toggleCollapse">
-        <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
-        <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">
-          <RiArrowUpSLine />
+        
+        <div 
+          class="chat-container" 
+          ref="chatContainerRef"
+        >
+          <div 
+            v-for="message in messages" 
+            :key="message.id"
+            :class="['message-container', message.isUser ? 'user-message' : 'character-message']"
+          >
+            <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
+            <div class="message-bubble">
+              <div class="message-content" v-html="message.content"></div>
+            </div>
+          </div>
         </div>
+        
+        <ChatInput 
+          @send-message="sendMessage" 
+          @select-option="selectOption"
+          @send-voice="handleVoiceMessage"
+          @keyboard-toggle="handleKeyboardToggle"
+          @ai-response="handleAIResponse"
+          :isCollapsed="isCollapsed"
+          :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
+          :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
+        />
       </div>
+      
+      <BottomNav />
     </div>
-    
-    <div 
-      class="chat-container" 
-      ref="chatContainerRef"
-      :class="{ 'collapsed': isCollapsed }"
-    >
-      <div 
-        v-for="message in messages" 
-        :key="message.id"
-        :class="['message-container', message.isUser ? 'user-message' : 'character-message']"
-      >
-        <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
-        <div class="message-bubble">
-          <div class="message-content" v-html="message.content"></div>
-        </div>
-      </div>
-    </div>
-    
-    <ChatInput 
-      @send-message="sendMessage" 
-      @select-option="selectOption"
-      @send-voice="handleVoiceMessage"
-      @keyboard-toggle="handleKeyboardToggle"
-      @ai-response="handleAIResponse"
-      :isCollapsed="isCollapsed"
-      :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
-      :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
-    />
-    <BottomNav />
     
     <!-- 清除对话确认对话框 -->
     <div class="confirm-dialog" v-if="showClearConfirm">
@@ -317,43 +312,49 @@ onMounted(() => {
 
 <style scoped>
 .chat-page {
-  display: flex;
-  flex-direction: column;
   height: 100vh;
-  background-color: #121a1a;
-  padding-bottom: 48px; /* 底部导航栏高度 */
-  box-sizing: border-box;
   position: relative;
   max-width: 480px;
   margin: 0 auto;
   width: 100%;
-}
-
-.character-bg {
-  height: 50vh;
-  position: relative;
   overflow: hidden;
-  background-color: #1a2a2a;
-  transition: height 0.3s ease;
 }
 
-.character-bg.shrink {
-  height: 30vh;
+.background-fixed {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 100vh;
+  max-width: 480px;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.character-image {
+.background-fixed img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
 }
 
+.content-wrapper {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 /* 情节信息样式 */
 .scene-container {
-  background-color: #1a2a2a;
+  background-color: rgba(26, 42, 42, 0.6);
   color: white;
   padding: 10px 15px;
   font-size: 14px;
+  height: 80px; /* 固定进度元素的高度 */
+  box-sizing: border-box;
 }
 
 .scene-info {
@@ -396,11 +397,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 15px;
-  background-color: rgba(26, 42, 42, 0.8);
+  background-color: rgba(26, 42, 42, 0.3); /* 降低透明度 */
   color: #cccccc;
   font-size: 14px;
-  position: relative;
+  position: absolute;
+  width: 100%;
+  box-sizing: border-box;
   z-index: 10;
+  height: 36px;
 }
 
 .clear-chat {
@@ -411,6 +415,7 @@ onMounted(() => {
   justify-content: center;
   color: #999;
   transition: color 0.2s ease;
+  height: 20px; /* 固定高度 */
 }
 
 .clear-chat:hover {
@@ -421,6 +426,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   cursor: pointer;
+  height: 20px; /* 固定高度 */
 }
 
 .arrow-icon {
@@ -428,28 +434,42 @@ onMounted(() => {
   margin-left: 6px;
   font-size: 18px;
   transition: transform 0.3s ease;
+  height: 20px; /* 固定高度 */
+  align-items: center;
 }
 
 .arrow-icon.rotate {
   transform: rotate(180deg);
 }
 
-.chat-container {
+/* 聊天容器和控制栏的包装器 */
+.chat-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
   width: 100%;
-  background-color: rgba(26, 42, 42, 0.9);
+  transition: height 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(18, 26, 26, 0.5);
+}
+
+.chat-wrapper:not(.collapsed) {
+  height: calc(100% - 50px - 80px); /* 减去header高度(50px)和进度元素高度(80px) */
+}
+
+.chat-wrapper.collapsed {
+  height: 40%; /* 收起时固定占据底部40%高度 */
+}
+
+.chat-container {
+  flex: 1;
+  width: 100%;
+  background-color: rgba(26, 42, 42, 0.3); /* 与toggle-bar保持一致 */
   overflow-y: auto;
   padding: 10px 0;
-  transition: height 0.3s ease;
-  position: relative;
-  margin-bottom: 58px; /* 为输入框留出空间 */
-}
-
-.chat-container:not(.collapsed) {
-  height: calc(100vh - 120px); /* 视口高度 - 其他元素高度 */
-}
-
-.chat-container.collapsed {
-  height: calc(100vh - 60vh - 120px); /* 视口高度 - 背景图高度 - 其他元素高度 */
+  margin-top: 36px;
+  margin-bottom: 58px;
 }
 
 .message-container {
@@ -478,16 +498,17 @@ onMounted(() => {
   padding: 10px 12px;
   border-radius: 12px;
   word-break: break-word;
+  backdrop-filter: blur(4px);
 }
 
 .user-message .message-bubble {
-  background-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.8);
   color: #1a1a1a;
   border-top-right-radius: 0;
 }
 
 .character-message .message-bubble {
-  background-color: #1a1a1a;
+  background-color: rgba(26, 26, 26, 0.7);
   color: #ffffff;
   border-top-left-radius: 0;
 }
@@ -558,47 +579,5 @@ onMounted(() => {
 .confirm-button {
   background-color: #e74c3c;
   color: #fff;
-}
-
-/* 测试API按钮样式 */
-.test-api-button {
-  position: absolute;
-  top: 15px;
-  right: 70px;
-  background-color: rgba(66, 184, 131, 0.2);
-  color: #42b883;
-  border: 1px solid #42b883;
-  border-radius: 4px;
-  padding: 5px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  z-index: 10;
-  transition: all 0.2s ease;
-}
-
-.test-api-button:hover {
-  background-color: rgba(66, 184, 131, 0.3);
-}
-
-.test-api-button.testing {
-  background-color: rgba(66, 184, 131, 0.1);
-  cursor: not-allowed;
-}
-
-.loading-spinner {
-  width: 12px;
-  height: 12px;
-  border: 2px solid transparent;
-  border-top-color: #42b883;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 }
 </style> 
