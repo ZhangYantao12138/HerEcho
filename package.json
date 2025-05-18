@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview",
-    "deploy": "pnpm build && gh-pages -d dist"
+    "deploy": "pnpm build && cp public/404.html dist/ && cp public/.nojekyll dist/ && gh-pages -d dist"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",

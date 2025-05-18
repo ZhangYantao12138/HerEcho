@@ -109,29 +109,6 @@ function addUserMessage(text: string) {
   scrollToBottom();
 }
 
-// 保留这个函数用于备用或测试
-function addCharacterResponse() {
-  const responses = [
-    "嗯？怎么了？有心事吗？",
-    "你今天看起来很不一样，告诉我发生了什么？",
-    "看着你的眼睛，我能感觉到你有话想说...",
-    "你靠得太近了，我的心跳有点加速...",
-    "今天的你，格外吸引我..."
-  ];
-  
-  const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-  
-  messages.value.push({
-    id: Date.now(),
-    content: randomResponse,
-    isUser: false,
-    hasAudio: true
-  });
-  
-  updateProgress();
-  scrollToBottom();
-}
-
 function updateProgress() {
   if (progress.value < 95) {
     progress.value += 5;
