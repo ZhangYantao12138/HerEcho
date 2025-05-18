@@ -55,7 +55,6 @@ const sceneInfo = {
 const progress = ref(sceneInfo.progress);
 const isCollapsed = ref(false); // 默认展开状态
 const chatContainerRef = ref<HTMLElement | null>(null);
-const isKeyboardVisible = ref(false); // 添加键盘可见状态
 const showClearConfirm = ref(false); // 添加清除确认对话框状态
 
 // 添加测试API的功能
@@ -148,10 +147,6 @@ function scrollToBottom() {
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
-}
-
-function handleKeyboardToggle(visible: boolean) {
-  isKeyboardVisible.value = visible;
 }
 
 // 添加清除对话功能
@@ -285,7 +280,6 @@ onMounted(() => {
           @send-message="sendMessage" 
           @select-option="selectOption"
           @send-voice="handleVoiceMessage"
-          @keyboard-toggle="handleKeyboardToggle"
           @ai-response="handleAIResponse"
           :isCollapsed="isCollapsed"
           :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
@@ -469,7 +463,7 @@ onMounted(() => {
   overflow-y: auto;
   padding: 10px 0;
   margin-top: 36px;
-  margin-bottom: 58px;
+  margin-bottom: 120px; /* 增加底部边距，确保不被输入框遮挡 */
 }
 
 .message-container {

@@ -21,10 +21,9 @@ const isVoiceMode = ref(false);
 const isRecording = ref(false);
 const recordingDuration = ref(0);
 const recordingTimer = ref<number | null>(null);
-const isKeyboardVisible = ref(false);
 const isProcessing = ref(false);
 
-const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'keyboard-toggle', 'ai-response']);
+const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'ai-response']);
 
 const options = ref([
   '羌青瓷，你还记得我们第一次相遇吗？',
@@ -38,7 +37,6 @@ async function sendMessage() {
     const userMessage = inputText.value.trim();
     emit('send-message', userMessage);
     inputText.value = '';
-    hideKeyboard();
     
     // 调用DeepSeek API获取回复
     try {
@@ -73,16 +71,12 @@ async function selectOption(option: string) {
 
 function toggleOptions() {
   showOptions.value = !showOptions.value;
-  if (showOptions.value) {
-    hideKeyboard();
-  }
 }
 
 function toggleInputMode() {
   isVoiceMode.value = !isVoiceMode.value;
   if (isVoiceMode.value) {
     inputText.value = '';
-    hideKeyboard();
   }
 }
 
@@ -123,23 +117,10 @@ async function stopRecording() {
   }
   recordingDuration.value = 0;
 }
-
-function showKeyboard() {
-  if (isVoiceMode.value) return;
-  isKeyboardVisible.value = true;
-  emit('keyboard-toggle', true);
-}
-
-function hideKeyboard() {
-  if (isKeyboardVisible.value) {
-    isKeyboardVisible.value = false;
-    emit('keyboard-toggle', false);
-  }
-}
 </script>
 
 <template>
-  <div class="input-container" :class="{ 'keyboard-active': isKeyboardVisible }">
+  <div class="input-container">
     <div class="input-wrapper" :class="{ 'recording': isRecording, 'processing': isProcessing }">
       <div class="voice-icon" @click="toggleInputMode">
         <RiMic2Line v-if="!isVoiceMode" />
@@ -152,8 +133,6 @@ function hideKeyboard() {
           v-model="inputText" 
           placeholder="以程聿怀的身份与羌青瓷对话..."
           @keyup.enter="sendMessage"
-          @focus="showKeyboard"
-          @blur="hideKeyboard"
           :disabled="isProcessing"
         />
         <div class="action-buttons">
@@ -195,67 +174,19 @@ function hideKeyboard() {
       </div>
     </div>
   </div>
-  
-  <!-- 虚拟键盘与输入框分离，使用fixed定位在底部 -->
-  <div v-if="isKeyboardVisible" class="virtual-keyboard">
-    <div class="keyboard-row">
-      <div class="key">Q</div>
-      <div class="key">W</div>
-      <div class="key">E</div>
-      <div class="key">R</div>
-      <div class="key">T</div>
-      <div class="key">Y</div>
-      <div class="key">U</div>
-      <div class="key">I</div>
-      <div class="key">O</div>
-      <div class="key">P</div>
-    </div>
-    <div class="keyboard-row">
-      <div class="key">A</div>
-      <div class="key">S</div>
-      <div class="key">D</div>
-      <div class="key">F</div>
-      <div class="key">G</div>
-      <div class="key">H</div>
-      <div class="key">J</div>
-      <div class="key">K</div>
-      <div class="key">L</div>
-    </div>
-    <div class="keyboard-row">
-      <div class="key wide">Shift</div>
-      <div class="key">Z</div>
-      <div class="key">X</div>
-      <div class="key">C</div>
-      <div class="key">V</div>
-      <div class="key">B</div>
-      <div class="key">N</div>
-      <div class="key">M</div>
-      <div class="key wide">删除</div>
-    </div>
-    <div class="keyboard-row">
-      <div class="key">符号</div>
-      <div class="key">123</div>
-      <div class="key extra-wide">空格</div>
-      <div class="key wide" @click="sendMessage" :class="{ 'disabled': isProcessing }">发送</div>
-    </div>
-  </div>
 </template>
 
 <style scoped>
 .input-container {
   position: fixed;
-  bottom: 48px; /* 底部导航栏的高度 */
+  bottom: 48px;
   left: 0;
   right: 0;
   background-color: #121a1a;
   width: 100%;
   z-index: 20;
-  transition: bottom 0.3s ease;
-}
-
-/* 当键盘激活时，移动输入框到键盘上方 */
-.input-container.keyboard-active {
-  bottom: 170px; /* 键盘高度 */
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .input-wrapper {
@@ -267,7 +198,6 @@ function hideKeyboard() {
   color: #999;
   margin: 10px auto;
   width: calc(100% - 30px);
-  max-width: 480px;
   transition: background-color 0.3s ease;
 }
 
@@ -349,7 +279,6 @@ input:disabled {
   width: calc(100% - 30px);
   margin: 0 auto;
   left: 15px;
-  max-width: 480px;
 }
 
 .option-item {
@@ -412,60 +341,5 @@ input:disabled {
 
 .recording .voice-input-area {
   animation: pulse 1s infinite;
-}
-
-.virtual-keyboard {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #2a2a2a;
-  padding: 5px 0;
-  z-index: 19; /* 确保键盘低于导航栏 */
-  border-top: 1px solid #444;
-  max-width: 480px;
-  margin: 0 auto;
-  height: 170px;
-}
-
-.keyboard-row {
-  display: flex;
-  justify-content: center;
-  margin: 2px 0;
-  padding: 0 5px;
-}
-
-.key {
-  width: 30px;
-  height: 36px;
-  background-color: #3a3a3a;
-  border-radius: 5px;
-  margin: 0 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 14px;
-  user-select: none;
-  flex: 1;
-  max-width: 10%;
-  cursor: pointer;
-}
-
-.key:active {
-  background-color: #555;
-}
-
-.key.wide {
-  max-width: 15%;
-}
-
-.key.extra-wide {
-  max-width: 40%;
-}
-
-.key.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style> 
