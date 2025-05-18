@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import CharacterChatPage from '../components/CharacterChatPage.vue'
 
 const router = createRouter({
   history: createWebHistory('/HerEcho/'),
@@ -21,7 +22,7 @@ const router = createRouter({
     {
       path: '/chat',
       name: 'chat',
-      component: () => import('../views/ChatView.vue')
+      component: CharacterChatPage
     },
     {
       path: '/discover',

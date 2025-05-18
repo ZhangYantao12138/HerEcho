@@ -1,73 +1,47 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { RiArrowUpSLine, RiDeleteBin2Line, RiTestTubeLine } from '@remixicon/vue';
-// import { Icon } from '@iconify/vue';
+import { ref, onMounted, watch } from 'vue';
+import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
 import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekService';
+import { getDefaultCharacter, getCharacterById } from '../config/characters';
+import type { Character, Message } from '../types/character';
 
-// 使用Vite的资源导入方式导入背景图片
-import bgImageSrc from '../assets/bg.png';
-const bgImage = bgImageSrc;
+// 当前选中的角色
+const currentCharacter = ref<Character>(getDefaultCharacter());
 
-// 更新消息内容以符合羌青瓷和程聿怀的角色扮演场景
-const messages = ref([
-  { 
-    id: 1, 
-    content: '(摇晃着盛满白葡萄酒的高脚杯，背对着你靠在桌前。听到脚步声后歪了歪唇，没有回头，只是抿了一口杯中的酒，随后轻轻地把酒杯放在桌子上，轻声笑了) "牵，你来了。"',
-    isUser: false,
-    hasAudio: true
-  },
-  { 
-    id: 2, 
-    content: '(伸手环住他的腰，将脸埋进他的后背) 羌青瓷，我来了。',
-    isUser: true,
-    hasAudio: false
-  },
-  { 
-    id: 3, 
-    content: '(轻笑一声，没有挣开你的怀抱，只是拿起酒杯又抿了一口酒，随后转身面对着你，微微俯身凑近你，温热的呼吸洒在你的脸上) "今天怎么这么粘人？"',
-    isUser: false,
-    hasAudio: true
-  },
-  { 
-    id: 4, 
-    content: '(伸手搭住他的肩膀，凑近他的耳边轻声说) "我今天......有点想你。"',
-    isUser: true,
-    hasAudio: false
-  },
-  { 
-    id: 5, 
-    content: '(喉结滚动，轻笑着将你推开一些，与你四目相对，眼中带着笑意) "哦？是吗？我还以为程医生巴不得离我远点呢。"',
-    isUser: false,
-    hasAudio: true
+// 消息列表
+const messages = ref<Message[]>([...currentCharacter.value.initialMessages]);
+
+// 进度信息
+const progress = ref(currentCharacter.value.sceneInfo.progress);
+const isCollapsed = ref(false);
+const chatContainerRef = ref<HTMLElement | null>(null);
+const showClearConfirm = ref(false);
+
+// 切换角色
+const handleCharacterChange = (characterId: string) => {
+  const character = getCharacterById(characterId);
+  if (character) {
+    currentCharacter.value = character;
+    messages.value = [...character.initialMessages];
+    progress.value = character.sceneInfo.progress;
+    scrollToBottom();
   }
-]);
-
-// 情节信息
-const sceneInfo = {
-  title: '（番外）你与羌青瓷重逢后的日常',
-  stage: '相爱阶段',
-  progress: 40
 };
 
-const progress = ref(sceneInfo.progress);
-const isCollapsed = ref(false); // 默认展开状态
-const chatContainerRef = ref<HTMLElement | null>(null);
-const showClearConfirm = ref(false); // 添加清除确认对话框状态
-
-// 添加测试API的功能
-const isTestingApi = ref(false);
+// 监听角色变化
+watch(() => currentCharacter.value, (newCharacter) => {
+  clearChatHistory();
+}, { deep: true });
 
 function sendMessage(text: string) {
   addUserMessage(text);
-  // 不再需要这里的自动回复，因为会由AI响应事件处理
 }
 
 function selectOption(option: string) {
   addUserMessage(option);
-  // 不再需要这里的自动回复，因为会由AI响应事件处理
 }
 
 function handleAIResponse(response: string) {
@@ -93,8 +67,6 @@ function handleVoiceMessage(duration: number) {
   
   updateProgress();
   scrollToBottom();
-  
-  // 语音消息的AI响应会通过handleAIResponse处理，不需要在这里模拟
 }
 
 function addUserMessage(text: string) {
@@ -126,32 +98,15 @@ function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value;
 }
 
-// 添加清除对话功能
 function showClearDialog() {
   showClearConfirm.value = true;
 }
 
 function clearChat() {
-  // 清除本地消息
-  messages.value = [
-    { 
-      id: Date.now(), 
-      content: '(优雅地站在窗边，看着窗外的风景，听到你进来的脚步声，转身微笑) "聿怀，你来了。有什么想和我聊的吗？"',
-      isUser: false,
-      hasAudio: true
-    }
-  ];
-  
-  // 清除DeepSeek API的对话历史
+  messages.value = [...currentCharacter.value.initialMessages];
   clearChatHistory();
-  
-  // 重置进度
-  progress.value = 10;
-  
-  // 隐藏确认对话框
+  progress.value = currentCharacter.value.sceneInfo.progress;
   showClearConfirm.value = false;
-  
-  // 滚动到底部
   scrollToBottom();
 }
 
@@ -160,12 +115,10 @@ function cancelClear() {
 }
 
 async function testApiConnection() {
-  isTestingApi.value = true;
   try {
     const testMessage = "测试消息，请简短回复";
     const response = await sendMessageToDeepSeek(testMessage);
     
-    // 显示测试成功消息
     messages.value.push({
       id: Date.now(),
       content: `<span style="color: #42b883;">API测试成功！</span><br>回复: ${response}`,
@@ -173,12 +126,9 @@ async function testApiConnection() {
       hasAudio: false
     });
     
-    // 清除测试消息的历史记录，避免污染正常对话
     clearChatHistory();
-    
     scrollToBottom();
   } catch (error: any) {
-    // 显示测试失败消息
     messages.value.push({
       id: Date.now(),
       content: `<span style="color: #e74c3c;">API测试失败！</span><br>错误: ${error?.message || '未知错误'}`,
@@ -186,8 +136,6 @@ async function testApiConnection() {
       hasAudio: false
     });
     scrollToBottom();
-  } finally {
-    isTestingApi.value = false;
   }
 }
 
@@ -200,20 +148,27 @@ onMounted(() => {
   <div class="chat-page">
     <!-- 固定背景图 -->
     <div class="background-fixed">
-      <img :src="bgImage" alt="羌青瓷" />
+      <transition name="fade">
+        <img 
+          :key="currentCharacter.id"
+          :src="currentCharacter.backgroundImage" 
+          :alt="currentCharacter.name" 
+        />
+      </transition>
     </div>
     
     <div class="content-wrapper">
       <ChatHeader 
-        roleName="羌青瓷" 
+        :currentCharacter="currentCharacter"
         @test-api="testApiConnection"
+        @change-character="handleCharacterChange"
       />
       
       <!-- 情节信息区域 -->
       <div class="scene-container" v-if="!isCollapsed">
         <div class="scene-info">
-          <div class="scene-text">情节：{{ sceneInfo.title }}</div>
-          <div class="scene-stage">{{ sceneInfo.stage }}</div>
+          <div class="scene-text">情节：{{ currentCharacter.sceneInfo.title }}</div>
+          <div class="scene-stage">{{ currentCharacter.sceneInfo.stage }}</div>
         </div>
         
         <div class="progress-section">
@@ -231,9 +186,7 @@ onMounted(() => {
           </div>
           <div class="toggle-section" @click="toggleCollapse">
             <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
-            <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">
-              <RiArrowUpSLine />
-            </div>
+            <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">▼</div>
           </div>
         </div>
         
@@ -308,6 +261,7 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  transition: opacity 0.3s ease;
 }
 
 .content-wrapper {
@@ -318,13 +272,12 @@ onMounted(() => {
   flex-direction: column;
 }
 
-/* 情节信息样式 */
 .scene-container {
   background-color: rgba(26, 42, 42, 0.6);
   color: white;
   padding: 10px 15px;
   font-size: 14px;
-  height: 80px; /* 固定进度元素的高度 */
+  height: 80px;
   box-sizing: border-box;
 }
 
@@ -368,7 +321,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 15px;
-  background-color: rgba(26, 42, 42, 0.3); /* 降低透明度 */
+  background-color: rgba(26, 42, 42, 0.3);
   color: #cccccc;
   font-size: 14px;
   position: absolute;
@@ -386,7 +339,7 @@ onMounted(() => {
   justify-content: center;
   color: #999;
   transition: color 0.2s ease;
-  height: 20px; /* 固定高度 */
+  height: 20px;
 }
 
 .clear-chat:hover {
@@ -397,7 +350,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   cursor: pointer;
-  height: 20px; /* 固定高度 */
+  height: 20px;
 }
 
 .arrow-icon {
@@ -405,7 +358,7 @@ onMounted(() => {
   margin-left: 6px;
   font-size: 18px;
   transition: transform 0.3s ease;
-  height: 20px; /* 固定高度 */
+  height: 20px;
   align-items: center;
 }
 
@@ -413,7 +366,6 @@ onMounted(() => {
   transform: rotate(180deg);
 }
 
-/* 聊天容器和控制栏的包装器 */
 .chat-wrapper {
   position: absolute;
   bottom: 0;
@@ -426,21 +378,21 @@ onMounted(() => {
 }
 
 .chat-wrapper:not(.collapsed) {
-  height: calc(100% - 50px - 80px); /* 减去header高度(50px)和进度元素高度(80px) */
+  height: calc(100% - 50px - 80px);
 }
 
 .chat-wrapper.collapsed {
-  height: 40%; /* 收起时固定占据底部40%高度 */
+  height: 40%;
 }
 
 .chat-container {
   flex: 1;
   width: 100%;
-  background-color: rgba(26, 42, 42, 0.3); /* 与toggle-bar保持一致 */
+  background-color: rgba(26, 42, 42, 0.3);
   overflow-y: auto;
   padding: 10px 0;
   margin-top: 36px;
-  margin-bottom: 120px; /* 增加底部边距，确保不被输入框遮挡 */
+  margin-bottom: 120px;
 }
 
 .message-container {
@@ -489,12 +441,10 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-/* 隐藏滚动条但保留功能 */
 .chat-container::-webkit-scrollbar {
   width: 0px;
 }
 
-/* 确认对话框样式 */
 .confirm-dialog {
   position: fixed;
   top: 0;
@@ -550,5 +500,15 @@ onMounted(() => {
 .confirm-button {
   background-color: #e74c3c;
   color: #fff;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style> 
