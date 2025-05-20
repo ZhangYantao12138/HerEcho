@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { characters, getCharacterById } from '../config/characters';
+import { getCharacterById } from '../config/characters';
 import type { Character } from '../types/character';
 
 interface ScriptDetailsModalProps {
