@@ -14,8 +14,11 @@ RUN pnpm install
 # 复制所有文件
 COPY . .
 
-# 构建应用
-RUN pnpm build
+# 手动运行 TypeScript 编译
+RUN pnpm exec vue-tsc -b
+
+# 手动运行 Vite 构建
+RUN pnpm exec vite build
 
 # 生产环境
 FROM nginx:alpine
