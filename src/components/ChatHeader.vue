@@ -1,22 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { RiArrowLeftSLine } from '@remixicon/vue';
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
 
+const router = useRouter();
 const props = defineProps<{
   currentCharacter: Character;
 }>();
 
 const emit = defineEmits<{
   (e: 'testApi'): void;
-  (e: 'changeCharacter', characterId: string): void;
 }>();
 
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 
+// 返回剧本选择页
+const handleBack = () => {
+  router.push('/chat');
+};
+
+// 切换角色
 const handleCharacterChange = (characterId: string) => {
-  emit('changeCharacter', characterId);
+  const currentRoute = router.currentRoute.value;
+  router.push(`/chat/${currentRoute.params.scriptId}/${characterId}`);
   showCharacterList.value = false;
 };
 
@@ -43,6 +52,11 @@ onUnmounted(() => {
 
 <template>
   <div class="chat-header">
+    <!-- 返回按钮 -->
+    <div class="back-button" @click="handleBack">
+      <RiArrowLeftSLine />
+    </div>
+    
     <div 
       ref="characterSelectorRef"
       class="character-selector" 
@@ -186,5 +200,27 @@ onUnmounted(() => {
 .test-api-btn:hover {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background-color 0.2s;
+  margin-right: 10px;
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.back-button svg {
+  width: 24px;
+  height: 24px;
 }
 </style> 
