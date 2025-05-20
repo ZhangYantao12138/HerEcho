@@ -45,7 +45,7 @@ watch(() => route.params, (newParams) => {
 }, { immediate: true });
 
 // 监听角色变化
-watch(() => currentCharacter.value, (newCharacter) => {
+watch(() => currentCharacter.value, () => {
   clearChatHistory();
 }, { deep: true });
 

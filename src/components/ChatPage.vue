@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+// 解决方案一：选择 main 分支的图标导入
 import { RiArrowDownSLine, RiDeleteBin2Line, RiTestTubeLine } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
+// 解决方案二：选择 main 分支的服务导入
 import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekService';
 import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
@@ -13,60 +15,40 @@ import type { Character } from '../types/character';
 import bgImageSrc from '../assets/bg.png';
 const bgImage = bgImageSrc;
 
-// 创建默认角色对象
-const defaultCharacter: Character = {
-  id: 'qiangqingci',
-  name: '羌青瓷',
-  avatar: '/avatars/qiangqingci.png',
-  backgroundImage: bgImage,
-  book_id: 'qiangqingci_book',
-  systemPrompt: '你是一个优雅、神秘的角色，说话时带着一丝玩味和挑逗。',
-  initialMessages: [
-    { 
-      id: 1, 
-      content: '(摇晃着盛满白葡萄酒的高脚杯，背对着你靠在桌前。听到脚步声后歪了歪唇，没有回头，只是抿了一口杯中的酒，随后轻轻地把酒杯放在桌子上，轻声笑了) "牵，你来了。"',
-      isUser: false,
-      hasAudio: true
-    }
-  ],
-  sceneInfo: {
-    title: '（番外）你与羌青瓷重逢后的日常',
-    stage: '相爱阶段',
-    progress: 40
-  }
-};
+// 修复：移除内联的 defaultCharacter 定义，并确保 currentCharacter 只被定义一次
+// const defaultCharacter: Character = { ... }; // 这个详细的定义可以删除或注释掉
 
-// 当前角色
-const currentCharacter = ref<Character>(defaultCharacter);
+// 当前角色 - 确保只定义一次，并使用 getDefaultCharacter
+const currentCharacter = ref<Character>(getDefaultCharacter());
 
 // 更新消息内容以符合羌青瓷和程聿怀的角色扮演场景
 const messages = ref([
-  { 
-    id: 1, 
+  {
+    id: 1,
     content: '(摇晃着盛满白葡萄酒的高脚杯，背对着你靠在桌前。听到脚步声后歪了歪唇，没有回头，只是抿了一口杯中的酒，随后轻轻地把酒杯放在桌子上，轻声笑了) "牵，你来了。"',
     isUser: false,
     hasAudio: true
   },
-  { 
-    id: 2, 
+  {
+    id: 2,
     content: '(伸手环住他的腰，将脸埋进他的后背) 羌青瓷，我来了。',
     isUser: true,
     hasAudio: false
   },
-  { 
-    id: 3, 
+  {
+    id: 3,
     content: '(轻笑一声，没有挣开你的怀抱，只是拿起酒杯又抿了一口酒，随后转身面对着你，微微俯身凑近你，温热的呼吸洒在你的脸上) "今天怎么这么粘人？"',
     isUser: false,
     hasAudio: true
   },
-  { 
-    id: 4, 
+  {
+    id: 4,
     content: '(伸手搭住他的肩膀，凑近他的耳边轻声说) "我今天......有点想你。"',
     isUser: true,
     hasAudio: false
   },
-  { 
-    id: 5, 
+  {
+    id: 5,
     content: '(喉结滚动，轻笑着将你推开一些，与你四目相对，眼中带着笑意) "哦？是吗？我还以为程医生巴不得离我远点呢。"',
     isUser: false,
     hasAudio: true
@@ -84,9 +66,22 @@ const progress = ref(sceneInfo.progress);
 const isCollapsed = ref(false); // 默认展开状态
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false); // 添加清除确认对话框状态
+// const currentCharacter = ref<Character>(getDefaultCharacter()); // 确保此行已被上面的统一定义替换或删除
 
-// 添加测试API的功能
-const isTestingApi = ref(false);
+// !!! 重要：你需要定义 testApiConnection 函数 !!!
+// 例如:
+// const testApiConnection = async () => {
+//   console.log("尝试连接 API...");
+//   try {
+//     const response = await sendMessageToDeepSeek([{ role: 'user', content: '你好' }]); // 假设的调用方式
+//     console.log("API 响应:", response);
+//     // 在这里处理API测试成功的逻辑，例如显示一个提示
+//   } catch (error) {
+//     console.error("API 测试失败:", error);
+//     // 在这里处理API测试失败的逻辑
+//   }
+// };
+
 
 function sendMessage(text: string) {
   addUserMessage(text);
@@ -105,7 +100,7 @@ function handleAIResponse(response: string) {
     isUser: false,
     hasAudio: true
   });
-  
+
   updateProgress();
   scrollToBottom();
 }
@@ -118,10 +113,10 @@ function handleVoiceMessage(duration: number) {
     isUser: true,
     hasAudio: true
   });
-  
+
   updateProgress();
   scrollToBottom();
-  
+
   // 语音消息的AI响应会通过handleAIResponse处理，不需要在这里模拟
 }
 
@@ -162,61 +157,29 @@ function showClearDialog() {
 function clearChat() {
   // 清除本地消息
   messages.value = [
-    { 
-      id: Date.now(), 
+    {
+      id: Date.now(),
       content: '(优雅地站在窗边，看着窗外的风景，听到你进来的脚步声，转身微笑) "聿怀，你来了。有什么想和我聊的吗？"',
       isUser: false,
       hasAudio: true
     }
   ];
-  
+
   // 清除DeepSeek API的对话历史
-  clearChatHistory();
-  
+  clearChatHistory(); // 这个函数来自于导入
+
   // 重置进度
   progress.value = 10;
-  
+
   // 隐藏确认对话框
   showClearConfirm.value = false;
-  
+
   // 滚动到底部
   scrollToBottom();
 }
 
 function cancelClear() {
   showClearConfirm.value = false;
-}
-
-async function testApiConnection() {
-  isTestingApi.value = true;
-  try {
-    const testMessage = "测试消息，请简短回复";
-    const response = await sendMessageToDeepSeek(testMessage);
-    
-    // 显示测试成功消息
-    messages.value.push({
-      id: Date.now(),
-      content: `<span style="color: #42b883;">API测试成功！</span><br>回复: ${response}`,
-      isUser: false,
-      hasAudio: false
-    });
-    
-    // 清除测试消息的历史记录，避免污染正常对话
-    clearChatHistory();
-    
-    scrollToBottom();
-  } catch (error: any) {
-    // 显示测试失败消息
-    messages.value.push({
-      id: Date.now(),
-      content: `<span style="color: #e74c3c;">API测试失败！</span><br>错误: ${error?.message || '未知错误'}`,
-      isUser: false,
-      hasAudio: false
-    });
-    scrollToBottom();
-  } finally {
-    isTestingApi.value = false;
-  }
 }
 
 onMounted(() => {
@@ -226,32 +189,29 @@ onMounted(() => {
 
 <template>
   <div class="chat-page">
-    <!-- 固定背景图 -->
     <div class="background-fixed">
       <img :src="bgImage" alt="羌青瓷" />
     </div>
-    
+
     <div class="content-wrapper">
-      <ChatHeader 
+      <ChatHeader
         :currentCharacter="currentCharacter"
-        @test-api="testApiConnection"
+        @test-api="testApiConnection" 
       />
-      
-      <!-- 情节信息区域 -->
+
       <div class="scene-container" v-if="!isCollapsed">
         <div class="scene-info">
           <div class="scene-text">情节：{{ sceneInfo.title }}</div>
           <div class="scene-stage">{{ sceneInfo.stage }}</div>
         </div>
-        
+
         <div class="progress-section">
           <div class="progress-bar">
             <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
           </div>
         </div>
       </div>
-      
-      <!-- 聊天容器和控制栏的包装器 -->
+
       <div class="chat-wrapper" :class="{ 'collapsed': isCollapsed }">
         <div class="toggle-bar">
           <div class="clear-chat" @click="showClearDialog">
@@ -260,17 +220,17 @@ onMounted(() => {
           <div class="toggle-section" @click="toggleCollapse">
             <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
             <div class="arrow-icon" :class="{ 'rotate': isCollapsed }">
-              <RiArrowUpSLine />
-            </div>
+              <RiArrowUpSLine /> 
+              </div>
           </div>
         </div>
-        
-        <div 
-          class="chat-container" 
+
+        <div
+          class="chat-container"
           ref="chatContainerRef"
         >
-          <div 
-            v-for="message in messages" 
+          <div
+            v-for="message in messages"
             :key="message.id"
             :class="['message-container', message.isUser ? 'user-message' : 'character-message']"
           >
@@ -280,9 +240,9 @@ onMounted(() => {
             </div>
           </div>
         </div>
-        
-        <ChatInput 
-          @send-message="sendMessage" 
+
+        <ChatInput
+          @send-message="sendMessage"
           @select-option="selectOption"
           @send-voice="handleVoiceMessage"
           @ai-response="handleAIResponse"
@@ -291,11 +251,10 @@ onMounted(() => {
           :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
         />
       </div>
-      
+
       <BottomNav />
     </div>
-    
-    <!-- 清除对话确认对话框 -->
+
     <div class="confirm-dialog" v-if="showClearConfirm">
       <div class="confirm-content">
         <h3>清除对话</h3>
@@ -310,6 +269,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* ... 样式部分保持不变 ... */
 .chat-page {
   height: 100vh;
   position: relative;
@@ -574,4 +534,4 @@ onMounted(() => {
   background-color: #e74c3c;
   color: #fff;
 }
-</style> 
+</style>
