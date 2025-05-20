@@ -9,16 +9,13 @@ interface ScriptDetailsModalProps {
     title: string;
     description: string;
     coverImage: string;
-    progress: number;
-    totalChapters?: number;
-    completedChapters?: number;
     characters: string[]; // 角色ID列表
   } | null;
   show: boolean;
 }
 
 const props = defineProps<ScriptDetailsModalProps>();
-const emit = defineEmits(['close', 'start', 'continue']);
+const emit = defineEmits(['close', 'start']);
 
 // 获取当前剧本对应的角色列表
 const availableCharacters = computed(() => {
@@ -46,14 +43,6 @@ function startChat() {
   });
 }
 
-function continueChat() {
-  if (!props.script || !selectedCharacter.value) return;
-  emit('continue', { 
-    script: props.script, 
-    characterId: selectedCharacter.value.id 
-  });
-}
-
 function selectCharacter(character: Character) {
   selectedCharacter.value = character;
   showDropdown.value = false;
@@ -76,19 +65,6 @@ function toggleDropdown() {
       </div>
       <div class="modal-content">
         <p class="modal-description">{{ script.description }}</p>
-        <div class="chapter-info">
-          <span class="chapter-count">共{{ script.totalChapters || 0 }}章</span>
-          <span class="chapter-progress">已完成: {{ script.completedChapters || 0 }}/{{ script.totalChapters || 0 }}</span>
-        </div>
-        <div class="script-progress">
-          <div class="progress-text">
-            <span>完成度</span>
-            <span>{{ script.progress }}%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: script.progress + '%' }"></div>
-          </div>
-        </div>
         
         <!-- 角色选择部分 -->
         <div class="character-selection">
@@ -126,23 +102,10 @@ function toggleDropdown() {
       </div>
       <div class="modal-actions">
         <button 
-          v-if="script.progress > 0" 
-          class="continue-button" 
-          @click="continueChat"
-          :disabled="!selectedCharacter"
-        >继续聊天</button>
-        <button 
-          v-else 
           class="start-button" 
           @click="startChat"
           :disabled="!selectedCharacter"
         >与ta聊天</button>
-        <button 
-          v-if="script.progress > 0" 
-          class="restart-button" 
-          @click="startChat"
-          :disabled="!selectedCharacter"
-        >重新开始</button>
       </div>
     </div>
   </div>
@@ -217,39 +180,6 @@ function toggleDropdown() {
   line-height: 1.5;
   color: #ddd;
   margin-bottom: 20px;
-}
-
-.chapter-info {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
-  font-size: 14px;
-  color: #bbb;
-}
-
-.script-progress {
-  margin-bottom: 20px;
-}
-
-.progress-text {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 12px;
-  color: #aaa;
-}
-
-.progress-bar {
-  height: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: #e74c3c;
-  border-radius: 2px;
 }
 
 /* 角色选择样式 */

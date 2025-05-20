@@ -7,9 +7,6 @@ interface ScriptCardProps {
     coverImage: string;
     isNew: boolean;
     isLocked?: boolean;
-    progress: number;
-    totalChapters?: number;
-    completedChapters?: number;
     comingSoon?: boolean;
   }
 }
@@ -35,15 +32,6 @@ defineEmits(['click']);
     <div class="script-info">
       <h3 class="script-title">{{ script.title }}</h3>
       <p class="script-description">{{ script.description }}</p>
-      <div v-if="!script.isLocked" class="script-progress">
-        <div class="progress-text">
-          <span>已完成 {{ script.completedChapters || 0 }}/{{ script.totalChapters || 0 }} 章节</span>
-          <span>{{ script.progress }}%</span>
-        </div>
-        <div class="progress-bar">
-          <div class="progress-fill" :style="{ width: script.progress + '%' }"></div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -138,34 +126,9 @@ defineEmits(['click']);
 }
 
 .script-description {
-  margin: 0 0 15px 0;
+  margin: 0;
   font-size: 14px;
   color: #bbb;
   line-height: 1.4;
-}
-
-.script-progress {
-  margin-top: 10px;
-}
-
-.progress-text {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 12px;
-  color: #aaa;
-}
-
-.progress-bar {
-  height: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background-color: #e74c3c;
-  border-radius: 2px;
 }
 </style> 
