@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
@@ -8,8 +9,19 @@ import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekSer
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
 
+// 获取路由参数
+const route = useRoute();
+const scriptId = route.params.scriptId as string;
+const characterId = route.params.characterId as string;
+
+// 验证路由参数
+const router = useRouter();
+if (!scriptId || !characterId) {
+  router.push('/chat');
+}
+
 // 当前选中的角色
-const currentCharacter = ref<Character>(getDefaultCharacter());
+const currentCharacter = ref<Character>(getCharacterById(characterId) || getDefaultCharacter());
 
 // 消息列表
 const messages = ref<Message[]>([...currentCharacter.value.initialMessages]);
@@ -20,16 +32,17 @@ const isCollapsed = ref(false);
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
 
-// 切换角色
-const handleCharacterChange = (characterId: string) => {
-  const character = getCharacterById(characterId);
-  if (character) {
-    currentCharacter.value = character;
-    messages.value = [...character.initialMessages];
-    progress.value = character.sceneInfo.progress;
+// 监听路由参数变化
+watch(() => route.params, (newParams) => {
+  const newCharacterId = newParams.characterId as string;
+  const newCharacter = getCharacterById(newCharacterId);
+  if (newCharacter) {
+    currentCharacter.value = newCharacter;
+    messages.value = [...newCharacter.initialMessages];
+    progress.value = newCharacter.sceneInfo.progress;
     scrollToBottom();
   }
-};
+}, { immediate: true });
 
 // 监听角色变化
 watch(() => currentCharacter.value, () => {
@@ -161,7 +174,6 @@ onMounted(() => {
       <ChatHeader 
         :currentCharacter="currentCharacter"
         @test-api="testApiConnection"
-        @change-character="handleCharacterChange"
       />
       
       <!-- 情节信息区域 -->
@@ -186,7 +198,7 @@ onMounted(() => {
           </div>
           <div class="toggle-section" @click="toggleCollapse">
             <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
-            <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">▼</div>
+            <div class="arrow-icon" :class="{ 'rotate': isCollapsed }">▼</div>
           </div>
         </div>
         

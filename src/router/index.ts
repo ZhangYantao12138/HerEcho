@@ -22,7 +22,13 @@ const router = createRouter({
     {
       path: '/chat',
       name: 'chat',
-      component: CharacterChatPage
+      component: () => import('../views/ScriptSelectionView.vue')
+    },
+    {
+      path: '/chat/:scriptId/:characterId',
+      name: 'chatWithScript',
+      component: CharacterChatPage,
+      props: true
     },
     {
       path: '/discover',

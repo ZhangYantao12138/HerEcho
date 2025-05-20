@@ -13,6 +13,7 @@ export interface SceneInfo {
 
 export interface Character {
     id: string;
+    book_id: string;
     name: string;
     avatar: string;
     backgroundImage: string;
