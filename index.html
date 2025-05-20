@@ -8,18 +8,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<<<<<<< HEAD
-    <title>friends.ai</title>
-    <script type="text/javascript">
+    <title>friends.ai</title> {/* Kept from origin/main */}
+    <script type="text/javascript"> {/* Kept from HEAD (your local changes) */}
       // 处理从404.html重定向过来的请求
       (function() {
         var redirect = sessionStorage.redirect;
         delete sessionStorage.redirect;
-        
+
         // 检查URL参数中是否有路径信息
         var urlParams = new URLSearchParams(window.location.search);
         var path = urlParams.get('p');
-        
+
         if (path) {
           // 如果有路径参数，将其转换为正确的路由路径
           history.replaceState(null, null, '/HerEcho/' + path);
@@ -29,13 +28,12 @@
         }
       })();
     </script>
-=======
-    <title>Her Echo - 羌青瓷</title>
+    {/* Kept from origin/main - these are your application's main files */}
     <script type="module" crossorigin src="/HerEcho/assets/index-LffxJXfs.js"></script>
     <link rel="stylesheet" href="/HerEcho/assets/index-CWwClzfc.css">
->>>>>>> origin/main
   </head>
   <body>
     <div id="app"></div>
+    {/* The closing </script> tag for index-LffxJXfs.js is part of the script tag itself, no separate closing tag for type="module" needed here like traditional scripts */}
   </body>
 </html>
