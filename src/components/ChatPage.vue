@@ -6,10 +6,38 @@ import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
 import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekService';
+import { getDefaultCharacter } from '../config/characters';
+import type { Character } from '../types/character';
 
 // 使用Vite的资源导入方式导入背景图片
 import bgImageSrc from '../assets/bg.png';
 const bgImage = bgImageSrc;
+
+// 创建默认角色对象
+const defaultCharacter: Character = {
+  id: 'qiangqingci',
+  name: '羌青瓷',
+  avatar: '/avatars/qiangqingci.png',
+  backgroundImage: bgImage,
+  book_id: 'qiangqingci_book',
+  systemPrompt: '你是一个优雅、神秘的角色，说话时带着一丝玩味和挑逗。',
+  initialMessages: [
+    { 
+      id: 1, 
+      content: '(摇晃着盛满白葡萄酒的高脚杯，背对着你靠在桌前。听到脚步声后歪了歪唇，没有回头，只是抿了一口杯中的酒，随后轻轻地把酒杯放在桌子上，轻声笑了) "牵，你来了。"',
+      isUser: false,
+      hasAudio: true
+    }
+  ],
+  sceneInfo: {
+    title: '（番外）你与羌青瓷重逢后的日常',
+    stage: '相爱阶段',
+    progress: 40
+  }
+};
+
+// 当前角色
+const currentCharacter = ref<Character>(defaultCharacter);
 
 // 更新消息内容以符合羌青瓷和程聿怀的角色扮演场景
 const messages = ref([
@@ -205,7 +233,7 @@ onMounted(() => {
     
     <div class="content-wrapper">
       <ChatHeader 
-        roleName="羌青瓷" 
+        :currentCharacter="currentCharacter"
         @test-api="testApiConnection"
       />
       

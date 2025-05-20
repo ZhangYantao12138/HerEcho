@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
@@ -13,6 +13,12 @@ import type { Character, Message } from '../types/character';
 const route = useRoute();
 const scriptId = route.params.scriptId as string;
 const characterId = route.params.characterId as string;
+
+// 验证路由参数
+const router = useRouter();
+if (!scriptId || !characterId) {
+  router.push('/chat');
+}
 
 // 当前选中的角色
 const currentCharacter = ref<Character>(getCharacterById(characterId) || getDefaultCharacter());
