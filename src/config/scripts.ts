@@ -1,5 +1,5 @@
 import type { Script } from '../types/script';
-import bgImg from '../assets/bg.png';
+import bgImg from '../assets/character_qqc_B001C001.png';
 
 // 清风书院剧本配置
 export const scriptB001: Script = {

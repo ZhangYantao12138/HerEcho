@@ -20,4 +20,5 @@ export interface Character {
     systemPrompt: string;
     initialMessages: Message[];
     sceneInfo: SceneInfo;
+    fallbackReplies?: string[];
 } 

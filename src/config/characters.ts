@@ -1,6 +1,6 @@
 import type { Character } from '../types/character';
-import characterCyhImg from '../assets/character_cyh.png';
-import bgImg from '../assets/bg.png';
+import characterCyhImg from '../assets/character_cyh_B001C002.png';
+import bgImg from '../assets/character_qqc_B001C001.png';
 
 // 羌青瓷角色配置
 export const characterQiangQingCiB001C001: Character = {
@@ -55,7 +55,13 @@ export const characterQiangQingCiB001C001: Character = {
         title: '（番外）你与羌青瓷重逢后的日常',
         stage: '相爱阶段',
         progress: 40
-    }
+    },
+    fallbackReplies: [
+        '（羌青瓷轻轻叹息）抱歉，我需要一点时间整理思绪……',
+        '（羌青瓷微微皱眉）连接似乎出了些问题，让我们稍后再继续吧。',
+        '（羌青瓷的目光有些迷离）我暂时无法回应，请给我一点时间……',
+        '（羌青瓷轻轻整理着衣袖）我的思绪有些混乱，能稍等片刻吗？'
+    ]
 };
 
 // 程聿怀角色配置
@@ -113,7 +119,13 @@ export const characterChengYuHuaiB001C002: Character = {
         title: '心理诊所的午后时光',
         stage: '相识阶段',
         progress: 20
-    }
+    },
+    fallbackReplies: [
+        '（程聿怀低头沉思）抱歉，刚才有点走神了。',
+        '（程聿怀推了推眼镜）网络好像不太稳定，我们稍后再聊。',
+        '（程聿怀温和一笑）我这边有点小问题，等我一下。',
+        '（程聿怀认真地看着你）抱歉，刚才没能及时回应。'
+    ]
 };
 
 // 导出所有角色配置
