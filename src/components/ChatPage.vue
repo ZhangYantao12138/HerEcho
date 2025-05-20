@@ -231,7 +231,7 @@ onMounted(() => {
           </div>
           <div class="toggle-section" @click="toggleCollapse">
             <span>{{ isCollapsed ? '展开对话' : '收起对话' }}</span>
-            <div class="arrow-icon" :class="{ 'rotate': !isCollapsed }">
+            <div class="arrow-icon" :class="{ 'rotate': isCollapsed }">
               <RiArrowUpSLine />
             </div>
           </div>
