@@ -3,8 +3,9 @@ import characterCyhImg from '../assets/character_cyh.png';
 import bgImg from '../assets/bg.png';
 
 // 羌青瓷角色配置
-export const characterXQC: Character = {
-    id: 'xqc',
+export const characterQiangQingCiB001C001: Character = {
+    id: 'B001C001',
+    book_id: 'book001',
     name: '羌青瓷',
     avatar: bgImg,  // 暂时使用背景图作为头像，后续需要替换
     backgroundImage: bgImg,
@@ -58,8 +59,9 @@ export const characterXQC: Character = {
 };
 
 // 程聿怀角色配置
-export const characterCYH: Character = {
-    id: 'cyh',
+export const characterChengYuHuaiB001C002: Character = {
+    id: 'B001C002',
+    book_id: 'book001',
     name: '程聿怀',
     avatar: characterCyhImg,
     backgroundImage: characterCyhImg,  // 使用程聿怀的专属背景图
@@ -115,10 +117,10 @@ export const characterCYH: Character = {
 };
 
 // 导出所有角色配置
-export const characters: Character[] = [characterXQC, characterCYH];
+export const characters: Character[] = [characterQiangQingCiB001C001, characterChengYuHuaiB001C002];
 
 // 获取默认角色
-export const getDefaultCharacter = (): Character => characterXQC;
+export const getDefaultCharacter = (): Character => characterQiangQingCiB001C001;
 
 // 根据ID获取角色
 export const getCharacterById = (id: string): Character | undefined => {
