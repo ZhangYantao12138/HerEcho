@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { RiArrowLeftSLine } from '@remixicon/vue';
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
 
-defineProps<{
+const router = useRouter();
+const props = defineProps<{
   currentCharacter: Character;
   onTestApi?: () => void;
   onChangeCharacter?: (characterId: string) => void;
@@ -11,21 +14,27 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'testApi'): void;
-  (e: 'changeCharacter', characterId: string): void;
 }>();
 
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 
+// 返回剧本选择页
+const handleBack = () => {
+  router.push('/chat');
+};
+
+// 切换角色
 const handleCharacterChange = (characterId: string) => {
-  emit('changeCharacter', characterId);
+  const currentRoute = router.currentRoute.value;
+  router.push(`/chat/${currentRoute.params.scriptId}/${characterId}`);
   showCharacterList.value = false;
 };
 
 // 处理点击外部区域
 const handleClickOutside = (event: MouseEvent) => {
   if (
-    characterSelectorRef.value && 
+    characterSelectorRef.value &&
     !characterSelectorRef.value.contains(event.target as Node) &&
     showCharacterList.value
   ) {
@@ -45,18 +54,21 @@ onUnmounted(() => {
 
 <template>
   <div class="chat-header">
-    <div 
+    <div class="back-button" @click="handleBack">
+      <RiArrowLeftSLine />
+    </div>
+
+    <div
       ref="characterSelectorRef"
-      class="character-selector" 
+      class="character-selector"
       @click.stop="showCharacterList = !showCharacterList"
     >
-      <img :src="currentCharacter.avatar" :alt="currentCharacter.name" class="character-avatar">
-      <span class="character-name">{{ currentCharacter.name }}</span>
+      <img :src="props.currentCharacter.avatar" :alt="props.currentCharacter.name" class="character-avatar">
+      <span class="character-name">{{ props.currentCharacter.name }}</span>
       <div class="dropdown-arrow" :class="{ 'active': showCharacterList }">▼</div>
-      
-      <!-- 角色列表下拉框 -->
-      <div 
-        v-if="showCharacterList" 
+
+      <div
+        v-if="showCharacterList"
         class="character-list"
         @click.stop
       >
@@ -64,7 +76,7 @@ onUnmounted(() => {
           v-for="character in characters"
           :key="character.id"
           class="character-item"
-          :class="{ 'active': character.id === currentCharacter.id }"
+          :class="{ 'active': character.id === props.currentCharacter.id }"
           @click="handleCharacterChange(character.id)"
         >
           <img :src="character.avatar" :alt="character.name" class="character-avatar-small">
@@ -72,7 +84,7 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-    
+
     <div class="header-actions">
       <button class="test-api-btn" @click="emit('testApi')">
         测试API
@@ -189,4 +201,17 @@ onUnmounted(() => {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.1);
 }
-</style> 
+
+.back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #ffffff;
+  transition: background-color 0.2s;
+  margin-right: 10px;
+}
+</style>
