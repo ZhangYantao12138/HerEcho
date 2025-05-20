@@ -1,0 +1,13 @@
+{
+  "build": {
+    "buildCommand": "pnpm build",
+    "outputDirectory": "dist",
+    "docker": {
+      "dockerfile": ".zeabur/Dockerfile"
+    }
+  },
+  "deploy": {
+    "startCommand": "npx serve -s dist",
+    "port": 80
+  }
+} 

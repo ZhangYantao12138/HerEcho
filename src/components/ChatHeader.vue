@@ -3,8 +3,10 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
 
-const props = defineProps<{
+defineProps<{
   currentCharacter: Character;
+  onTestApi?: () => void;
+  onChangeCharacter?: (characterId: string) => void;
 }>();
 
 const emit = defineEmits<{

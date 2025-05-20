@@ -1,4 +1,4 @@
-import type { Character, Message, SceneInfo } from '../types/character';
+import type { Character } from '../types/character';
 import characterCyhImg from '../assets/character_cyh.png';
 import bgImg from '../assets/bg.png';
 

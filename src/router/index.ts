@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import CharacterChatPage from '../components/CharacterChatPage.vue'
 
 const router = createRouter({
-  history: createWebHistory('/HerEcho/'),
+  history: createWebHistory('/'),
   routes: [
     {
       path: '/',

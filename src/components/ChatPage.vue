@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { RiArrowUpSLine, RiDeleteBin2Line, RiTestTubeLine } from '@remixicon/vue';
+import { RiArrowUpSLine, RiDeleteBin2Line } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
-import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekService';
+import { clearChatHistory } from '../services/deepseekService';
+import { getDefaultCharacter } from '../config/characters';
+import type { Character } from '../types/character';
 
 // 使用Vite的资源导入方式导入背景图片
 import bgImageSrc from '../assets/bg.png';
@@ -56,9 +58,7 @@ const progress = ref(sceneInfo.progress);
 const isCollapsed = ref(false); // 默认展开状态
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false); // 添加清除确认对话框状态
-
-// 添加测试API的功能
-const isTestingApi = ref(false);
+const currentCharacter = ref<Character>(getDefaultCharacter());
 
 function sendMessage(text: string) {
   addUserMessage(text);
@@ -159,38 +159,6 @@ function cancelClear() {
   showClearConfirm.value = false;
 }
 
-async function testApiConnection() {
-  isTestingApi.value = true;
-  try {
-    const testMessage = "测试消息，请简短回复";
-    const response = await sendMessageToDeepSeek(testMessage);
-    
-    // 显示测试成功消息
-    messages.value.push({
-      id: Date.now(),
-      content: `<span style="color: #42b883;">API测试成功！</span><br>回复: ${response}`,
-      isUser: false,
-      hasAudio: false
-    });
-    
-    // 清除测试消息的历史记录，避免污染正常对话
-    clearChatHistory();
-    
-    scrollToBottom();
-  } catch (error: any) {
-    // 显示测试失败消息
-    messages.value.push({
-      id: Date.now(),
-      content: `<span style="color: #e74c3c;">API测试失败！</span><br>错误: ${error?.message || '未知错误'}`,
-      isUser: false,
-      hasAudio: false
-    });
-    scrollToBottom();
-  } finally {
-    isTestingApi.value = false;
-  }
-}
-
 onMounted(() => {
   scrollToBottom();
 });
@@ -204,9 +172,8 @@ onMounted(() => {
     </div>
     
     <div class="content-wrapper">
-      <ChatHeader 
-        roleName="羌青瓷" 
-        @test-api="testApiConnection"
+      <ChatHeader
+        :currentCharacter="currentCharacter"
       />
       
       <!-- 情节信息区域 -->
