@@ -4,5 +4,5 @@ import vue from '@vitejs/plugin-vue'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  base: '/', // 在Zeabur上使用根路径
+  base: '/' // 使用根路径
 })
