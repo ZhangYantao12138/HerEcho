@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { RiArrowUpSLine, RiDeleteBin2Line, RiTestTubeLine } from '@remixicon/vue';
+import { RiArrowDownSLine, RiDeleteBin2Line, RiTestTubeLine } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
@@ -404,13 +404,8 @@ onMounted(() => {
   display: inline-flex;
   margin-left: 6px;
   font-size: 18px;
-  transition: transform 0.3s ease;
-  height: 20px; /* 固定高度 */
+  height: 20px;
   align-items: center;
-}
-
-.arrow-icon.rotate {
-  transform: rotate(180deg);
 }
 
 /* 聊天容器和控制栏的包装器 */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { 
   RiMic2Line, 
   RiKeyboardLine,
@@ -31,6 +31,22 @@ const options = ref([
   '为什么当年你要消除我的记忆？',
   '你能告诉我更多关于莱诺家族的事吗？'
 ]);
+
+const inputContainerRef = ref<HTMLElement | null>(null);
+
+function handleClickOutside(event: MouseEvent) {
+  if (inputContainerRef.value && !inputContainerRef.value.contains(event.target as Node)) {
+    showOptions.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 async function sendMessage() {
   if (inputText.value.trim()) {
@@ -120,8 +136,8 @@ async function stopRecording() {
 </script>
 
 <template>
-  <div class="input-container">
-    <div class="input-wrapper" :class="{ 'recording': isRecording, 'processing': isProcessing }">
+  <div class="input-container" ref="inputContainerRef">
+    <div class="input-wrapper" :class="{ 'recording': isRecording }">
       <div class="voice-icon" @click="toggleInputMode">
         <RiMic2Line v-if="!isVoiceMode" />
         <RiKeyboardLine v-else />
@@ -133,10 +149,11 @@ async function stopRecording() {
           v-model="inputText" 
           placeholder="以程聿怀的身份与羌青瓷对话..."
           @keyup.enter="sendMessage"
+          @click="showOptions = false"
           :disabled="isProcessing"
         />
         <div class="action-buttons">
-          <div class="chat-options" @click="toggleOptions" :class="{ 'disabled': isProcessing }">
+          <div class="chat-options" @click.stop="toggleOptions" :class="{ 'disabled': isProcessing }">
             <RiMessage2Line />
           </div>
           <div class="add-button" @click="sendMessage" :class="{ 'disabled': isProcessing }">
@@ -203,10 +220,6 @@ async function stopRecording() {
 
 .input-wrapper.recording {
   background-color: #42b883;
-}
-
-.input-wrapper.processing {
-  background-color: #3498db;
 }
 
 .voice-icon {
