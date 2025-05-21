@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { 
   RiArrowLeftSLine, 
   RiTestTubeLine
 } from '@remixicon/vue';
 import { characters } from '../config/characters';
+import { getScriptById } from '../config/scripts';
 import type { Character } from '../types/character';
 import { getViewpointDescription } from '../services/viewpointService';
 
 const router = useRouter();
+const route = useRoute();
 
 const props = defineProps({
   currentCharacter: {
@@ -23,9 +25,22 @@ const emit = defineEmits(['testApi']);
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 
+// 获取当前剧本ID
+const scriptId = computed(() => route.params.scriptId as string);
+
 // 获取当前视角描述
 const viewpointDescription = computed(() => {
   return getViewpointDescription(props.currentCharacter.id);
+});
+
+// 获取当前剧本可用的角色列表
+const availableCharacters = computed(() => {
+  const currentScript = getScriptById(scriptId.value);
+  if (!currentScript) return [];
+  
+  return characters.filter(character => 
+    currentScript.characters.includes(character.id)
+  );
 });
 
 // 返回剧本选择页
@@ -40,7 +55,7 @@ function toggleCharacterList() {
 
 // 选择角色
 function selectCharacter(character: Character) {
-  router.push(`/chat/${character.id}`);
+  router.push(`/chat/${scriptId.value}/${character.id}`);
   showCharacterList.value = false;
 }
 
@@ -91,7 +106,7 @@ onUnmounted(() => {
         
         <div class="character-list" v-if="showCharacterList">
           <div 
-            v-for="character in characters" 
+            v-for="character in availableCharacters" 
             :key="character.id"
             class="character-option"
             :class="{ 'selected': character.id === currentCharacter.id }"

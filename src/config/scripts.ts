@@ -23,12 +23,12 @@ export const scriptB002: Script = {
     title: '阙落',
     description: '一个发生在古代的故事，敬请期待...',
     coverImage: script002Img,
-    isNew: false,
-    isLocked: true,
+    isNew: true,
     progress: 0,
-    comingSoon: true,
+    totalChapters: 5,
+    completedChapters: 0,
     background: '古代',
-    characters: []
+    characters: ['B002C001', 'B002C002', 'B002C003', 'B002C004', 'B002C005', 'B002C006']
 };
 
 // 导出所有剧本配置
