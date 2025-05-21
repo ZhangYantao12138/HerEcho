@@ -6,43 +6,16 @@ import StoryDetailsModal from '../components/StoryDetailsModal.vue';
 import DreamStoryList from '../components/DreamStoryList.vue';
 import DreamHeader from '../components/DreamHeader.vue';
 import type { DreamStory } from '../components/DreamStoryList.vue';
-import oneImage from '../assets/one.png';
+import { 
+  getAllStories, 
+  getStoryById, 
+  showLockedMessage 
+} from '../services/dreamStoryService';
 
 const router = useRouter();
 
-// 可用的叙梦故事
-const dreamStories = ref<DreamStory[]>([
-  {
-    id: 'story1',
-    title: '叙梦故事1',
-    description: '古风故事',
-    coverImage: oneImage,
-    isNew: true,
-    progress: 0,
-    totalChapters: 4,
-    completedChapters: 0
-  },
-  {
-    id: 'story2',
-    title: '叙梦故事2',
-    description: '敬请期待...',
-    coverImage: oneImage,
-    isNew: false,
-    isLocked: true,
-    progress: 0,
-    comingSoon: true
-  },
-  {
-    id: 'story3',
-    title: '叙梦故事3',
-    description: '敬请期待...',
-    coverImage: oneImage,
-    isNew: false,
-    isLocked: true,
-    progress: 0,
-    comingSoon: true
-  }
-]);
+// 使用服务获取故事数据
+const dreamStories = getAllStories();
 
 // 显示故事详情弹窗
 const showStoryDetails = ref(false);
@@ -71,11 +44,6 @@ function continueGame() {
   if (!selectedStory.value) return;
   router.push(`/dream/scene/${selectedStory.value.id}`);
   showStoryDetails.value = false;
-}
-
-// 显示锁定信息
-function showLockedMessage(story: DreamStory) {
-  alert(`《${story.title}》尚未开放，敬请期待！`);
 }
 
 // 关闭详情弹窗
