@@ -1,5 +1,5 @@
 import type { Script } from '../types/script';
-import bgImg from '../assets/character_qqc_B001C001.png';
+
 import script001Img from '../assets/Scripts/script001_lmxs.jpg';
 import script002Img from '../assets/Scripts/script002_ql.jpg';
 
