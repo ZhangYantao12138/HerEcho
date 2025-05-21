@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { defineEmits } from 'vue';
 import StoryCard from './StoryCard.vue';
 
 // 定义故事类型
@@ -16,7 +16,7 @@ export interface DreamStory {
   comingSoon?: boolean;
 }
 
-const props = defineProps<{
+defineProps<{
   stories: DreamStory[]
 }>();
 
