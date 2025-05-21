@@ -8,10 +8,8 @@ import {
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
 import { 
-  getViewpointDescription, 
   getAvailableViewpoints, 
-  getCurrentViewpoint,
-  VIEWPOINT_MAPPING
+  getCurrentViewpoint
 } from '../services/viewpointService';
 import ViewpointSelector from './ViewpointSelector.vue';
 import type { ViewpointRelation } from '../types/viewpoint';
