@@ -7,18 +7,14 @@ import type { Character } from '../types/character';
 import type { ViewpointRelation } from '../types/viewpoint';
 import { playerPromptConfig } from '../config/promptConfig';
 import { generateDetailedPlayerPrompt } from '../config/playerPrompts';
+import { 
+  VIEWPOINT_MAPPING, 
+  VIEWPOINT_DESCRIPTIONS,
+  getViewpointDescriptionByKey 
+} from '../config/viewpointConfig';
 
-// 定义视角映射，第一个ID是对话对象，第二个ID是视角角色
-export const VIEWPOINT_MAPPING: ViewpointRelation[] = [
-  // 默认视角 - 程聿怀与羌青瓷
-  { characterId: 'B001C001', viewpointId: 'B001C002', promptKey: '' },
-  
-  // 蒋伯驾视角与程走柳对话
-  { characterId: 'B001C004', viewpointId: 'B001C006', promptKey: 'BJX_TO_CZL' },
-  
-  // 以撒视角与缪宏谟对话
-  { characterId: 'B001C007', viewpointId: 'B001C008', promptKey: 'YS_TO_MHM' }
-];
+// 导出视角映射以便其他模块使用
+export { VIEWPOINT_MAPPING };
 
 /**
  * 检查当前角色是否有特定视角关系
@@ -61,17 +57,10 @@ export function getViewpointDescription(characterId: string): string {
   const viewpointRelation = VIEWPOINT_MAPPING.find(mapping => mapping.characterId === characterId);
   
   if (!viewpointRelation) {
-    return '默认视角';
+    return VIEWPOINT_DESCRIPTIONS.DEFAULT;
   }
   
-  switch (viewpointRelation.promptKey) {
-    case 'BJX_TO_CZL':
-      return '蒋伯驾视角';
-    case 'YS_TO_MHM':
-      return '以撒视角';
-    default:
-      return '默认视角';
-  }
+  return getViewpointDescriptionByKey(viewpointRelation.promptKey);
 }
 
 /**

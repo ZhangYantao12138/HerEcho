@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { ViewpointRelation } from '../types/viewpoint';
+import { getViewpointDescriptionByKey } from '../config/viewpointConfig';
 
 // 定义组件属性
 const props = defineProps<{
@@ -40,17 +41,10 @@ function closeSelector() {
 // 计算视角描述
 const viewpointDescription = computed(() => {
   if (!props.currentViewpoint) {
-    return '默认视角';
+    return getViewpointDescriptionByKey();
   }
   
-  switch (props.currentViewpoint.promptKey) {
-    case 'BJX_TO_CZL':
-      return '蒋伯驾视角';
-    case 'YS_TO_MHM':
-      return '以撒视角';
-    default:
-      return '默认视角';
-  }
+  return getViewpointDescriptionByKey(props.currentViewpoint.promptKey);
 });
 </script>
 
@@ -70,8 +64,7 @@ const viewpointDescription = computed(() => {
         @click="selectViewpoint(viewpoint)"
       >
         <span class="option-name">
-          {{ viewpoint.promptKey === 'BJX_TO_CZL' ? '蒋伯驾视角' : 
-             viewpoint.promptKey === 'YS_TO_MHM' ? '以撒视角' : '默认视角' }}
+          {{ getViewpointDescriptionByKey(viewpoint.promptKey) }}
         </span>
       </div>
     </div>
