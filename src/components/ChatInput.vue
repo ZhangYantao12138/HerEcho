@@ -29,12 +29,45 @@ const isProcessing = ref(false);
 
 const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'ai-response']);
 
-const options = ref([
-  '羌青瓷，你还记得我们第一次相遇吗？',
-  '(轻轻握住你的手) 我很想你...',
-  '为什么当年你要消除我的记忆？',
-  '你能告诉我更多关于莱诺家族的事吗？'
-]);
+// 根据角色ID动态生成选项
+const options = ref<string[]>([]);
+
+// 更新对话选项
+function updateDialogOptions() {
+  switch (props.currentCharacter?.id) {
+    case 'B001C001': // 羌青瓷
+      options.value = [
+        '羌青瓷，你还记得我们第一次相遇吗？',
+        '(轻轻握住你的手) 我很想你...',
+        '为什么当年你要消除我的记忆？',
+        '你能告诉我更多关于莱诺家族的事吗？'
+      ];
+      break;
+    case 'B001C006': // 蒋伯驾
+      options.value = [
+        '(审视地看着他) 你打算如何进入缪家？',
+        '蒋先生，你对缪宏谟了解多少？',
+        '(微微皱眉) 你的计划会伤害到无辜的人吗？',
+        '我想了解更多关于你过去的事'
+      ];
+      break;
+    case 'B001C007': // 缪宏谟
+      options.value = [
+        '(盯着她的眼睛) 你知道布雷诺的战火燃到哪里了吗？',
+        '缪家的赌场是怎么运作的？',
+        '你是真的相信赌局的公平吗？',
+        '(讲述一个布雷诺的故事)'
+      ];
+      break;
+    default:
+      options.value = [
+        `${props.currentCharacter?.name}，你能告诉我更多关于自己的事吗？`,
+        `(表情认真) 最近过得怎么样？`,
+        `你对当前的处境有什么想法？`,
+        `(安静地等待对方说些什么)`
+      ];
+  }
+}
 
 const inputContainerRef = ref<HTMLElement | null>(null);
 
@@ -46,14 +79,18 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  updateDialogOptions();
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
 
-// 监听角色变化，角色为程聿怀时自动回复特定问题
+// 监听角色变化，更新选项并处理自动回复
 watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
+  // 更新对话选项
+  updateDialogOptions();
+  
   // 如果新角色是羌青瓷 (B001C001) 并且旧角色是程聿怀之一 (B001C002或B001C003)
   if (newCharacter?.id === 'B001C001' && 
      (oldCharacter?.id === 'B001C002' || oldCharacter?.id === 'B001C003')) {
@@ -86,7 +123,7 @@ async function sendMessage() {
       emit('ai-response', aiResponse);
     } catch (error) {
       console.error('获取AI回复失败:', error);
-      emit('ai-response', '(神情黯淡) 抱歉，聿怀，我现在有些恍惚，可以稍后再谈吗？');
+      emit('ai-response', `(${props.currentCharacter.name}神情恍惚) 抱歉，我需要整理一下思绪...`);
     } finally {
       isProcessing.value = false;
     }
@@ -113,7 +150,7 @@ async function selectOption(option: string) {
     emit('ai-response', aiResponse);
   } catch (error) {
     console.error('获取AI回复失败:', error);
-    emit('ai-response', '(轻轻叹息) 聿怀，我们的连接似乎出了些问题，能稍后再谈吗？');
+    emit('ai-response', `(${props.currentCharacter.name}轻轻叹息) 我们的连接似乎出了些问题，能稍后再谈吗？`);
   } finally {
     isProcessing.value = false;
   }
@@ -152,15 +189,17 @@ async function stopRecording() {
   if (recordingDuration.value >= 0.5) { // 最少录音0.5秒
     emit('send-voice', recordingDuration.value);
     
-    // 这里可以添加语音识别功能，将语音转为文本后调用DeepSeek API
-    // 目前只是模拟一个简单的回复
+    // 生成适用于当前角色的语音消息提示
+    const voicePrompt = `您向${props.currentCharacter.name}发送了一段语音消息`;
+    
     try {
       isProcessing.value = true;
-      const aiResponse = await sendMessageToDeepSeek("程聿怀发送了一段语音消息，听起来很想念你");
+      const aiResponse = await sendMessageToDeepSeek(voicePrompt);
       emit('ai-response', aiResponse);
     } catch (error) {
       console.error('获取AI回复失败:', error);
-      emit('ai-response', '(微微歪头) 聿怀，你的声音有些模糊，能再说一次吗？');
+      // 使用角色名称定制错误信息
+      emit('ai-response', `(${props.currentCharacter.name}似乎没有听清) 抱歉，你能再说一次吗？`);
     } finally {
       isProcessing.value = false;
     }
@@ -205,7 +244,7 @@ async function stopRecording() {
           @touchend.prevent="stopRecording"
           :class="{ 'disabled': isProcessing }"
         >
-          {{ isRecording ? '松开发送' : (isProcessing ? '羌青瓷思考中...' : '按住说话') }}
+          {{ isRecording ? '松开发送' : (isProcessing ? `${props.currentCharacter.name}思考中...` : '按住说话') }}
           <div v-if="isRecording" class="recording-duration">
             {{ recordingDuration.toFixed(1) }}s
           </div>
