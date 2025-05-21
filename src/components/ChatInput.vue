@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { 
   RiMic2Line, 
   RiKeyboardLine,
@@ -8,10 +8,14 @@ import {
 } from '@remixicon/vue';
 import { sendMessageToDeepSeek } from '../services/deepseekService';
 
-defineProps({
+const props = defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
+  },
+  currentCharacter: {
+    type: Object,
+    required: true
   }
 });
 
@@ -47,6 +51,18 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
 });
+
+// 监听角色变化，角色为程聿怀时自动回复特定问题
+watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
+  // 如果新角色是羌青瓷 (B001C001) 并且旧角色是程聿怀之一 (B001C002或B001C003)
+  if (newCharacter?.id === 'B001C001' && 
+     (oldCharacter?.id === 'B001C002' || oldCharacter?.id === 'B001C003')) {
+    const memoryQuestion = '为什么当年你要消除我的记忆？';
+    
+    // 自动选择该选项
+    selectOption(memoryQuestion);
+  }
+}, { deep: true });
 
 async function sendMessage() {
   if (inputText.value.trim()) {
