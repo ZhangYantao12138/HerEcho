@@ -66,7 +66,16 @@ watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
 
 async function sendMessage() {
   if (inputText.value.trim()) {
-    const userMessage = inputText.value.trim();
+    let userMessage = inputText.value.trim();
+    
+    // 检查是否只有括号而没有实际内容
+    const onlyBracketsRegex = /^\([^)]*\)$/;
+    if (onlyBracketsRegex.test(userMessage)) {
+      // 根据当前角色添加适当的默认文本
+      const characterName = props.currentCharacter?.name || '羌青瓷';
+      userMessage = `${userMessage} ${characterName}...`;
+    }
+    
     emit('send-message', userMessage);
     inputText.value = '';
     
