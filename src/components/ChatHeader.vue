@@ -3,9 +3,6 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { 
   RiArrowLeftSLine, 
-  RiSettings4Line, 
-  RiSoundModuleLine, 
-  RiVoiceprintLine,
   RiTestTubeLine
 } from '@remixicon/vue';
 import { characters } from '../config/characters';
@@ -115,15 +112,6 @@ onUnmounted(() => {
     <div class="header-actions">
       <div class="icon-button" @click="handleTestApi">
         <RiTestTubeLine />
-      </div>
-      <div class="icon-button">
-        <RiVoiceprintLine />
-      </div>
-      <div class="icon-button">
-        <RiSoundModuleLine />
-      </div>
-      <div class="icon-button">
-        <RiSettings4Line />
       </div>
     </div>
   </header>
