@@ -5,6 +5,7 @@
 
 import { getDefaultCharacter } from '../config/characters';
 import { systemPromptConfig } from '../config/promptConfig';
+import { getViewpointPrompt } from './viewpointService';
 import type { Character } from '../types/character';
 
 // 从环境变量获取API密钥
@@ -215,4 +216,60 @@ export async function refreshAIResponse(lastUserMessage?: string): Promise<strin
   // 重新请求AI回复
   console.log('刷新AI回复...');
   return sendMessageToDeepSeek(userMessage);
+}
+
+/**
+ * 获取玩家自动回复
+ * @param characterMessage 角色的消息
+ * @returns 返回生成的玩家回复
+ */
+export async function getPlayerAutoResponse(characterMessage: string): Promise<string> {
+  try {
+    // 使用视角服务获取适当的玩家提示
+    const playerPrompt = getViewpointPrompt(currentCharacter, characterMessage);
+    
+    console.log('获取玩家自动回复...');
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: systemPromptConfig.globalAISettings.model,
+          messages: [
+            {
+              role: 'system',
+              content: playerPrompt
+            }
+          ],
+          temperature: systemPromptConfig.globalAISettings.defaultTemp + 0.1, // 玩家回复稍微更随机一些
+          max_tokens: systemPromptConfig.charLimits.responseMax,
+          top_p: systemPromptConfig.globalAISettings.topP,
+          stream: false
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`获取玩家回复失败: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      throw fetchError;
+    }
+  } catch (error) {
+    console.error('获取玩家自动回复失败:', error);
+    return '(微微点头) 我明白了。';
+  }
 } 

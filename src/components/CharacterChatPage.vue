@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
@@ -8,6 +8,7 @@ import BottomNav from './BottomNav.vue';
 import { clearChatHistory, sendMessageToDeepSeek, setCurrentCharacter } from '../services/deepseekService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
+import { getViewpointDescription } from '../services/viewpointService';
 
 // 获取路由参数
 const route = useRoute();
@@ -31,6 +32,14 @@ const progress = ref(currentCharacter.value.sceneInfo.progress);
 const isCollapsed = ref(false);
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
+
+// 获取当前视角描述
+const viewpointDescription = computed(() => {
+  if (currentCharacter.value) {
+    return getViewpointDescription(currentCharacter.value.id);
+  }
+  return '默认视角';
+});
 
 // 监听路由参数变化
 watch(() => route.params, (newParams) => {
@@ -524,5 +533,15 @@ onMounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.viewpoint-indicator {
+  font-size: 0.8rem;
+  color: #f0e6d2;
+  padding: 2px 8px;
+  background-color: rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 5px;
 }
 </style> 

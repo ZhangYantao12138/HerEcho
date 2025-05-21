@@ -1,48 +1,67 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { RiArrowLeftSLine } from '@remixicon/vue';
+import { 
+  RiArrowLeftSLine, 
+  RiSettings4Line, 
+  RiSoundModuleLine, 
+  RiVoiceprintLine,
+  RiTestTubeLine
+} from '@remixicon/vue';
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
+import { getViewpointDescription } from '../services/viewpointService';
 
 const router = useRouter();
-const props = defineProps<{
-  currentCharacter: Character;
-  onTestApi?: () => void;
-  onChangeCharacter?: (characterId: string) => void;
-}>();
 
-const emit = defineEmits<{
-  (e: 'testApi'): void;
-}>();
+const props = defineProps({
+  currentCharacter: {
+    type: Object as () => Character,
+    required: true
+  }
+});
+
+const emit = defineEmits(['testApi']);
 
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 
+// 获取当前视角描述
+const viewpointDescription = computed(() => {
+  return getViewpointDescription(props.currentCharacter.id);
+});
+
 // 返回剧本选择页
-const handleBack = () => {
-  router.push('/chat');
-};
+function goBack() {
+  router.push('/');
+}
 
-// 切换角色
-const handleCharacterChange = (characterId: string) => {
-  const currentRoute = router.currentRoute.value;
-  router.push(`/chat/${currentRoute.params.scriptId}/${characterId}`);
+// 切换角色列表显示
+function toggleCharacterList() {
+  showCharacterList.value = !showCharacterList.value;
+}
+
+// 选择角色
+function selectCharacter(character: Character) {
+  router.push(`/chat/${character.id}`);
   showCharacterList.value = false;
-};
+}
 
-// 处理点击外部区域
-const handleClickOutside = (event: MouseEvent) => {
+// 处理点击外部区域关闭角色列表
+function handleClickOutside(event: MouseEvent) {
   if (
-    characterSelectorRef.value &&
-    !characterSelectorRef.value.contains(event.target as Node) &&
-    showCharacterList.value
+    characterSelectorRef.value && 
+    !characterSelectorRef.value.contains(event.target as Node)
   ) {
     showCharacterList.value = false;
   }
-};
+}
 
-// 添加和移除事件监听器
+// 处理API测试
+function handleTestApi() {
+  emit('testApi');
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
 });
@@ -53,165 +72,232 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="chat-header">
-    <div class="back-button" @click="handleBack">
-      <RiArrowLeftSLine />
-    </div>
-
-    <div
-      ref="characterSelectorRef"
-      class="character-selector"
-      @click.stop="showCharacterList = !showCharacterList"
-    >
-      <img :src="props.currentCharacter.avatar" :alt="props.currentCharacter.name" class="character-avatar">
-      <span class="character-name">{{ props.currentCharacter.name }}</span>
-      <div class="dropdown-arrow" :class="{ 'active': showCharacterList }">▼</div>
-
-      <div
-        v-if="showCharacterList"
-        class="character-list"
-        @click.stop
-      >
-        <div
-          v-for="character in characters"
-          :key="character.id"
-          class="character-item"
-          :class="{ 'active': character.id === props.currentCharacter.id }"
-          @click="handleCharacterChange(character.id)"
-        >
-          <img :src="character.avatar" :alt="character.name" class="character-avatar-small">
-          <span>{{ character.name }}</span>
+  <header class="chat-header">
+    <div class="left-section">
+      <button class="back-button" @click="goBack">
+        <RiArrowLeftSLine />
+      </button>
+      
+      <div class="character-selector" @click="toggleCharacterList" ref="characterSelectorRef">
+        <div class="selected-character">
+          <div class="character-avatar">
+            <img :src="currentCharacter.avatar" alt="">
+          </div>
+          <div class="character-info">
+            <div class="name">{{ currentCharacter.name }}</div>
+            <div class="details">
+              <span class="scene">{{ currentCharacter.sceneInfo.title }}</span>
+              <span class="viewpoint-badge">{{ viewpointDescription }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="character-list" v-if="showCharacterList">
+          <div 
+            v-for="character in characters" 
+            :key="character.id"
+            class="character-option"
+            :class="{ 'selected': character.id === currentCharacter.id }"
+            @click="selectCharacter(character)"
+          >
+            <div class="character-avatar">
+              <img :src="character.avatar" alt="">
+            </div>
+            <div class="character-option-info">
+              <div class="name">{{ character.name }}</div>
+              <div class="title">{{ character.sceneInfo.title }}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
+    
     <div class="header-actions">
-      <button class="test-api-btn" @click="emit('testApi')">
-        测试API
-      </button>
+      <div class="icon-button" @click="handleTestApi">
+        <RiTestTubeLine />
+      </div>
+      <div class="icon-button">
+        <RiVoiceprintLine />
+      </div>
+      <div class="icon-button">
+        <RiSoundModuleLine />
+      </div>
+      <div class="icon-button">
+        <RiSettings4Line />
+      </div>
     </div>
-  </div>
+  </header>
 </template>
 
 <style scoped>
 .chat-header {
-  height: 50px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 15px;
-  background-color: rgba(26, 42, 42, 0.6);
-  backdrop-filter: blur(10px);
-  position: relative;
-  z-index: 10;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background-color: #111819;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 5px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+}
+
+.back-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .character-selector {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
   position: relative;
-  padding: 5px;
-  border-radius: 8px;
-  transition: background-color 0.2s;
+  cursor: pointer;
 }
 
-.character-selector:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.selected-character {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.selected-character:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .character-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
   margin-right: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.character-name {
-  color: #ffffff;
-  font-size: 16px;
-  margin-right: 8px;
+.character-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.dropdown-arrow {
+.character-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-info .name {
   color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.character-info .details {
+  display: flex;
+  align-items: center;
+  margin-top: 3px;
+}
+
+.scene {
+  color: #aaaaaa;
   font-size: 12px;
-  transition: transform 0.2s;
 }
 
-.dropdown-arrow.active {
-  transform: rotate(180deg);
+.viewpoint-badge {
+  font-size: 11px;
+  color: #f0e6d2;
+  background-color: rgba(66, 184, 131, 0.2);
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(66, 184, 131, 0.4);
+  margin-left: 8px;
 }
 
 .character-list {
   position: absolute;
   top: 100%;
   left: 0;
-  width: 200px;
-  background-color: rgba(26, 42, 42, 0.95);
+  background-color: #1a2122;
   border-radius: 8px;
-  padding: 8px;
-  margin-top: 5px;
+  overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-top: 8px;
+  z-index: 10;
 }
 
-.character-item {
+.character-option {
   display: flex;
   align-items: center;
-  padding: 8px;
-  border-radius: 6px;
-  transition: background-color 0.2s;
+  padding: 10px 15px;
+  transition: all 0.2s ease;
+}
+
+.character-option:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.character-option.selected {
+  background-color: rgba(66, 184, 131, 0.1);
+  border-left: 3px solid #42b883;
+}
+
+.character-option-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.character-option-info .name {
   color: #ffffff;
+  font-size: 14px;
 }
 
-.character-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.character-item.active {
-  background-color: rgba(66, 184, 131, 0.2);
-}
-
-.character-avatar-small {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 8px;
+.character-option-info .title {
+  color: #aaaaaa;
+  font-size: 12px;
+  margin-top: 3px;
 }
 
 .header-actions {
   display: flex;
-  align-items: center;
+  gap: 16px;
 }
 
-.test-api-btn {
-  background: none;
-  border: none;
-  color: #cccccc;
-  cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  font-size: 14px;
-}
-
-.test-api-btn:hover {
-  color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.back-button {
+.icon-button {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
   border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #aaa;
   cursor: pointer;
-  color: #ffffff;
-  transition: background-color 0.2s;
-  margin-right: 10px;
+  transition: all 0.2s ease;
+}
+
+.icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 </style>
