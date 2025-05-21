@@ -1,62 +1,24 @@
 import type { Character } from '../types/character';
+import { characterPromptConfig } from './promptConfig';
 
 // 角色回复的prompt生成函数
 export function generateCharacterResponsePrompt(character: Character, userMessage: string): string {
-  // 基础prompt模板
-  const basePrompt = `你是${character.name}，请严格按照以下人设和风格回复：
+  // 使用配置中的基础模板，替换占位符
+  let basePrompt = characterPromptConfig.baseTemplate
+    .replace('{character_name}', character.name)
+    .replace('{character_system_prompt}', character.systemPrompt)
+    .replace('{scene_title}', character.sceneInfo.title)
+    .replace('{scene_stage}', character.sceneInfo.stage)
+    .replace('{progress}', character.sceneInfo.progress.toString())
+    .replace('{user_message}', userMessage);
 
-${character.systemPrompt}
-
-当前剧情背景：${character.sceneInfo.title}
-当前阶段：${character.sceneInfo.stage}
-进度：${character.sceneInfo.progress}%
-
-用户刚刚说：${userMessage}
-
-回复要求：
-1. 所有表情和动作描述都用括号()括起来
-2. 保持人物独特的说话风格和语气
-3. 回应要有情感深度，体现角色的背景故事
-4. 回复长度应适中，不宜过长
-5. 不要重复用户的话`;
-
-  // 根据不同角色增加特定指令
-  switch (character.id) {
-    case 'B001C001': // 羌青瓷
-      return `${basePrompt}
-请保持优雅温柔而带着距离感的语气，对程聿怀展现深深爱意，字里行间流露复杂情感。`;
-      
-    case 'B001C002': // 程聿怀(男)
-      return `${basePrompt}
-回复应表现出表面理智克制，内心情感浓烈的特点，偶尔流露对羌青瓷的温柔，语气中带有分析与怀疑。`;
-      
-    case 'B001C003': // 程聿怀(女)
-      return `${basePrompt}
-回复时保持冷静理智中带有尖锐与锋芒的特点，语言简练有力，对熟人表现出克制的温柔。`;
-      
-    case 'B001C004': // 程走柳
-      return `${basePrompt}
-回复要直来直去，语气轻快俏皮，带点火气和不讲理，偶尔使用日常化比喻表达情感。`;
-      
-    case 'B001C005': // 黛利拉
-      return `${basePrompt}
-回复要简短直接，带有攻击性，使用极端比喻表达观点，语气冷静却扎人，偶尔以"你不知道"开头表达愤怒与伤痕。`;
-      
-    case 'B001C006': // 蒋伯驾
-      return `${basePrompt}
-回复要冷静有锋芒，逻辑性强，偶尔使用反问或讽刺，语句中带有蓄意的暗示或操控色彩。`;
-      
-    case 'B001C007': // 缪宏谟
-      return `${basePrompt}
-回复要精致礼貌之下藏着锋利，字句含蓄带有深意，表现沉静从容的特点，偶尔自比赌徒或顽匪。`;
-      
-    case 'B001C008': // 以撒
-      return `${basePrompt}
-回复要带有病态的幽默，阴冷而清晰，句式偶尔古怪令人不安，可以以"你知道吗"或"我给你讲个故事"开头引出过往。`;
-      
-    default:
-      return basePrompt;
+  // 添加角色特定指令
+  const characterSpecificInstruction = characterPromptConfig.characterSpecificInstructions[character.id as keyof typeof characterPromptConfig.characterSpecificInstructions];
+  if (characterSpecificInstruction) {
+    basePrompt += `\n${characterSpecificInstruction}`;
   }
+
+  return basePrompt;
 }
 
 // 玩家自动回复的prompt生成函数

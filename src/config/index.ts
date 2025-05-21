@@ -4,6 +4,7 @@ export * from './characters';
 // 导出prompt配置
 export * from './characterPrompts';
 export * from './playerPrompts';
+export * from './promptConfig';
 
 // 一些常量配置
 export const CONFIG = {

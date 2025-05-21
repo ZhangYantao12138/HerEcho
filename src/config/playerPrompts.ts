@@ -1,34 +1,22 @@
 import type { Character } from '../types/character';
+import { playerPromptConfig } from './promptConfig';
 
 // 玩家自动回复生成更丰富的prompt
 export function generateDetailedPlayerPrompt(character: Character, characterMessage: string): string {
   // 获取对应角色的基本信息
   const roleInfo = getPlayerRoleInfo(character.id);
   
-  return `你需要扮演与${character.name}对话的角色${roleInfo.name ? `：${roleInfo.name}` : ''}。请根据以下情境和角色特点生成自然、情感丰富的回复。
-
-角色背景：
-${roleInfo.background}
-
-当前剧情背景：${character.sceneInfo.title}
-当前阶段：${character.sceneInfo.stage}
-进度：${character.sceneInfo.progress}%
-
-对话关系：
-${roleInfo.relationship}
-
-${character.name}刚刚说：${characterMessage}
-
-说话风格：
-${roleInfo.toneStyle}
-
-回复要求：
-1. 所有表情和动作描述都用括号()括起来
-2. 保持对话自然流畅，符合当前情境和角色特点
-3. 展现角色情感层次，反映你们之间的关系
-4. 回复长度适中，语句简练有力
-5. 不要重复角色的话
-6. 采用第一人称"我"`;
+  // 使用配置中的模板并替换占位符
+  return playerPromptConfig.baseTemplate
+    .replace('{character_name}', character.name)
+    .replace('{player_name}', roleInfo.name ? `: ${roleInfo.name}` : '')
+    .replace('{player_background}', roleInfo.background)
+    .replace('{scene_title}', character.sceneInfo.title)
+    .replace('{scene_stage}', character.sceneInfo.stage)
+    .replace('{progress}', character.sceneInfo.progress.toString())
+    .replace('{relationship}', roleInfo.relationship)
+    .replace('{character_message}', characterMessage)
+    .replace('{tone_style}', roleInfo.toneStyle);
 }
 
 interface PlayerRoleInfo {

@@ -4,6 +4,7 @@
  */
 
 import { getDefaultCharacter } from '../config/characters';
+import { systemPromptConfig } from '../config/promptConfig';
 import type { Character } from '../types/character';
 
 // 从环境变量获取API密钥
@@ -17,11 +18,11 @@ interface ChatMessage {
   content: string;
 }
 
-// 最多保存10条消息的历史记录
-const MAX_HISTORY = 10;
-// 自动重试配置
-const MAX_RETRY_ATTEMPTS = 2;
-const RETRY_DELAY = 2000; // 重试间隔，单位毫秒
+// 从配置文件获取参数
+const MAX_HISTORY = systemPromptConfig.charLimits.maxContextTokens > 0 ? 
+  Math.floor(systemPromptConfig.charLimits.maxContextTokens / 200) : 10; // 大约每条消息200 tokens
+const MAX_RETRY_ATTEMPTS = systemPromptConfig.fallbackSettings.maxRetries;
+const RETRY_DELAY = systemPromptConfig.fallbackSettings.retryDelayMs;
 
 let currentCharacter: Character = getDefaultCharacter();
 let chatHistory: ChatMessage[] = [
@@ -47,6 +48,11 @@ export function setCurrentCharacter(character: Character): void {
  */
 export async function sendMessageToDeepSeek(message: string, retryCount = 0): Promise<string> {
   try {
+    // 检查用户输入是否超过限制
+    if (message.length > systemPromptConfig.charLimits.userInputMax) {
+      message = message.substring(0, systemPromptConfig.charLimits.userInputMax);
+    }
+    
     // 添加用户消息到历史记录
     if (retryCount === 0) { // 只在首次尝试时添加用户消息，避免重试时重复添加
       chatHistory.push({
@@ -77,11 +83,11 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'deepseek-chat',
+          model: systemPromptConfig.globalAISettings.model,
           messages: chatHistory,
-          temperature: 0.7,
-          max_tokens: 800,
-          top_p: 0.9,
+          temperature: systemPromptConfig.globalAISettings.defaultTemp,
+          max_tokens: systemPromptConfig.charLimits.responseMax,
+          top_p: systemPromptConfig.globalAISettings.topP,
           stream: false
         }),
         signal: controller.signal
@@ -131,35 +137,40 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
     }
 
     // 所有重试都失败，使用回退回复
-    const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
-      ? currentCharacter.fallbackReplies
-      : [
-        `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
-        `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
-        `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
-        `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
-      ];
-    
-    // 智能选择回退回复，避免连续使用相同的回复
-    let newIndex;
-    if (fallbackResponses.length > 1) {
-      do {
-        newIndex = Math.floor(Math.random() * fallbackResponses.length);
-      } while (newIndex === lastFallbackIndex);
-      lastFallbackIndex = newIndex;
+    if (systemPromptConfig.fallbackSettings.useDefaultFallback) {
+      const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
+        ? currentCharacter.fallbackReplies
+        : [
+          `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
+          `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
+          `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
+          `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
+        ];
+      
+      // 智能选择回退回复，避免连续使用相同的回复
+      let newIndex;
+      if (fallbackResponses.length > 1) {
+        do {
+          newIndex = Math.floor(Math.random() * fallbackResponses.length);
+        } while (newIndex === lastFallbackIndex);
+        lastFallbackIndex = newIndex;
+      } else {
+        newIndex = 0;
+      }
+      
+      const fallbackResponse = fallbackResponses[newIndex];
+      
+      // 将回退回复也添加到聊天历史中，以保持连贯性
+      chatHistory.push({
+        role: 'assistant',
+        content: fallbackResponse
+      });
+      
+      return fallbackResponse;
     } else {
-      newIndex = 0;
+      // 如果禁用默认回退，则向上抛出错误
+      throw error;
     }
-    
-    const fallbackResponse = fallbackResponses[newIndex];
-    
-    // 将回退回复也添加到聊天历史中，以保持连贯性
-    chatHistory.push({
-      role: 'assistant',
-      content: fallbackResponse
-    });
-    
-    return fallbackResponse;
   }
 }
 
