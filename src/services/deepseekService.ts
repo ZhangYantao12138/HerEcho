@@ -19,6 +19,10 @@ interface ChatMessage {
 
 // 最多保存10条消息的历史记录
 const MAX_HISTORY = 10;
+// 自动重试配置
+const MAX_RETRY_ATTEMPTS = 2;
+const RETRY_DELAY = 2000; // 重试间隔，单位毫秒
+
 let currentCharacter: Character = getDefaultCharacter();
 let chatHistory: ChatMessage[] = [
   {
@@ -26,6 +30,9 @@ let chatHistory: ChatMessage[] = [
     content: currentCharacter.systemPrompt
   }
 ];
+
+// 用于存储上次使用的回退回复索引，避免连续使用相同的回复
+let lastFallbackIndex: number = -1;
 
 // 设置当前角色
 export function setCurrentCharacter(character: Character): void {
@@ -38,24 +45,26 @@ export function setCurrentCharacter(character: Character): void {
  * @param message 用户消息
  * @returns 返回AI回复
  */
-export async function sendMessageToDeepSeek(message: string): Promise<string> {
+export async function sendMessageToDeepSeek(message: string, retryCount = 0): Promise<string> {
   try {
     // 添加用户消息到历史记录
-    chatHistory.push({
-      role: 'user',
-      content: message
-    });
+    if (retryCount === 0) { // 只在首次尝试时添加用户消息，避免重试时重复添加
+      chatHistory.push({
+        role: 'user',
+        content: message
+      });
 
-    // 保持历史记录在限制范围内
-    while (chatHistory.length > MAX_HISTORY + 1) {
-      if (chatHistory[0].role === 'system') {
-        chatHistory.splice(1, 1);
-      } else {
-        chatHistory.shift();
+      // 保持历史记录在限制范围内
+      while (chatHistory.length > MAX_HISTORY + 1) {
+        if (chatHistory[0].role === 'system') {
+          chatHistory.splice(1, 1);
+        } else {
+          chatHistory.shift();
+        }
       }
     }
 
-    console.log('发送请求到DeepSeek API:', apiUrl);
+    console.log(`发送请求到DeepSeek API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, apiUrl);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -109,8 +118,19 @@ export async function sendMessageToDeepSeek(message: string): Promise<string> {
       throw fetchError;
     }
   } catch (error) {
-    console.error('调用DeepSeek API失败:', error);
+    console.error(`调用DeepSeek API失败 (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, error);
+    
+    // 如果还有重试次数，则进行重试
+    if (retryCount < MAX_RETRY_ATTEMPTS) {
+      console.log(`${RETRY_DELAY/1000}秒后进行第${retryCount + 2}次尝试...`);
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve(sendMessageToDeepSeek(message, retryCount + 1));
+        }, RETRY_DELAY);
+      });
+    }
 
+    // 所有重试都失败，使用回退回复
     const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
       ? currentCharacter.fallbackReplies
       : [
@@ -119,8 +139,27 @@ export async function sendMessageToDeepSeek(message: string): Promise<string> {
         `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
         `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
       ];
-    const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
-    return randomResponse;
+    
+    // 智能选择回退回复，避免连续使用相同的回复
+    let newIndex;
+    if (fallbackResponses.length > 1) {
+      do {
+        newIndex = Math.floor(Math.random() * fallbackResponses.length);
+      } while (newIndex === lastFallbackIndex);
+      lastFallbackIndex = newIndex;
+    } else {
+      newIndex = 0;
+    }
+    
+    const fallbackResponse = fallbackResponses[newIndex];
+    
+    // 将回退回复也添加到聊天历史中，以保持连贯性
+    chatHistory.push({
+      role: 'assistant',
+      content: fallbackResponse
+    });
+    
+    return fallbackResponse;
   }
 }
 
@@ -134,4 +173,35 @@ export function clearChatHistory(): void {
       content: currentCharacter.systemPrompt
     }
   ];
+  // 重置上次使用的回退回复索引
+  lastFallbackIndex = -1;
+}
+
+/**
+ * 刷新AI回复
+ * @param lastUserMessage 最后一条用户消息
+ * @returns 返回新的AI回复
+ */
+export async function refreshAIResponse(lastUserMessage?: string): Promise<string | null> {
+  // 检查是否有用户消息可以刷新
+  if (!lastUserMessage && chatHistory.length < 2) {
+    console.log('没有可刷新的对话');
+    return null;
+  }
+  
+  // 获取最后一条用户消息
+  const userMessage = lastUserMessage || chatHistory.find(msg => msg.role === 'user')?.content;
+  if (!userMessage) {
+    console.log('找不到用户消息');
+    return null;
+  }
+  
+  // 如果有AI回复，从历史记录中移除最后一条AI回复
+  if (chatHistory.length > 1 && chatHistory[chatHistory.length - 1].role === 'assistant') {
+    chatHistory.pop();
+  }
+  
+  // 重新请求AI回复
+  console.log('刷新AI回复...');
+  return sendMessageToDeepSeek(userMessage);
 } 
