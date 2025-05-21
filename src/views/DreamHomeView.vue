@@ -2,59 +2,19 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import BottomNav from '../components/BottomNav.vue';
-import StoryCard from '../components/StoryCard.vue';
 import StoryDetailsModal from '../components/StoryDetailsModal.vue';
-import oneImage from '../assets/one.png';
+import DreamStoryList from '../components/DreamStoryList.vue';
+import DreamHeader from '../components/DreamHeader.vue';
+import type { DreamStory } from '../components/DreamStoryList.vue';
+import { 
+  getAllStories,
+  showLockedMessage 
+} from '../services/dreamStoryService';
 
 const router = useRouter();
 
-// 定义故事类型
-interface DreamStory {
-  id: string;
-  title: string;
-  description: string;
-  coverImage: string;
-  isNew: boolean;
-  isLocked?: boolean;
-  progress: number;
-  totalChapters?: number;
-  completedChapters?: number;
-  comingSoon?: boolean;
-}
-
-// 可用的叙梦故事
-const dreamStories = ref<DreamStory[]>([
-  {
-    id: 'story1',
-    title: '叙梦故事1',
-    description: '古风故事',
-    coverImage: oneImage,
-    isNew: true,
-    progress: 0,
-    totalChapters: 4,
-    completedChapters: 0
-  },
-  {
-    id: 'story2',
-    title: '叙梦故事2',
-    description: '敬请期待...',
-    coverImage: oneImage,
-    isNew: false,
-    isLocked: true,
-    progress: 0,
-    comingSoon: true
-  },
-  {
-    id: 'story3',
-    title: '叙梦故事3',
-    description: '敬请期待...',
-    coverImage: oneImage,
-    isNew: false,
-    isLocked: true,
-    progress: 0,
-    comingSoon: true
-  }
-]);
+// 使用服务获取故事数据
+const dreamStories = getAllStories();
 
 // 显示故事详情弹窗
 const showStoryDetails = ref(false);
@@ -85,11 +45,6 @@ function continueGame() {
   showStoryDetails.value = false;
 }
 
-// 显示锁定信息
-function showLockedMessage(story: DreamStory) {
-  alert(`《${story.title}》尚未开放，敬请期待！`);
-}
-
 // 关闭详情弹窗
 function closeDetails() {
   showStoryDetails.value = false;
@@ -98,20 +53,14 @@ function closeDetails() {
 
 <template>
   <div class="dream-home-container">
-    <!-- 页面头部 -->
-    <div class="dream-header">
-      <div class="page-title">叙梦</div>
-    </div>
+    <!-- 页面头部组件 -->
+    <DreamHeader title="叙梦" />
     
-    <!-- 故事卡片列表 -->
-    <div class="dream-stories-container">
-      <StoryCard
-        v-for="story in dreamStories"
-        :key="story.id"
-        :story="story"
-        @click="enterDreamStory"
-      />
-    </div>
+    <!-- 故事卡片列表组件 -->
+    <DreamStoryList 
+      :stories="dreamStories" 
+      @select-story="enterDreamStory" 
+    />
     
     <!-- 故事详情弹窗 -->
     <StoryDetailsModal
@@ -137,22 +86,5 @@ function closeDetails() {
   color: white;
   padding-bottom: 60px;
   position: relative;
-}
-
-.dream-header {
-  padding: 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.dream-stories-container {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
 }
 </style> 
