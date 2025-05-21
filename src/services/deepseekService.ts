@@ -111,13 +111,14 @@ export async function sendMessageToDeepSeek(message: string): Promise<string> {
   } catch (error) {
     console.error('调用DeepSeek API失败:', error);
 
-    const fallbackResponses = [
-      `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
-      `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
-      `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
-      `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
-    ];
-
+    const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
+      ? currentCharacter.fallbackReplies
+      : [
+        `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
+        `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
+        `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
+        `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
+      ];
     const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
     return randomResponse;
   }

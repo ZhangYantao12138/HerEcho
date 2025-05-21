@@ -5,7 +5,7 @@ import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
-import { clearChatHistory, sendMessageToDeepSeek } from '../services/deepseekService';
+import { clearChatHistory, sendMessageToDeepSeek, setCurrentCharacter } from '../services/deepseekService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
 
@@ -38,6 +38,7 @@ watch(() => route.params, (newParams) => {
   const newCharacter = getCharacterById(newCharacterId);
   if (newCharacter) {
     currentCharacter.value = newCharacter;
+    setCurrentCharacter(newCharacter);
     messages.value = [...newCharacter.initialMessages];
     progress.value = newCharacter.sceneInfo.progress;
     scrollToBottom();

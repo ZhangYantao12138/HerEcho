@@ -12,7 +12,7 @@ import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
 
 // 使用Vite的资源导入方式导入背景图片
-import bgImageSrc from '../assets/bg.png';
+import bgImageSrc from '../assets/character_qqc_B001C001.png';
 const bgImage = bgImageSrc;
 
 // 修复：移除内联的 defaultCharacter 定义，并确保 currentCharacter 只被定义一次

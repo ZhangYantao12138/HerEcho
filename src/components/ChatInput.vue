@@ -147,7 +147,7 @@ async function stopRecording() {
         <input 
           type="text" 
           v-model="inputText" 
-          placeholder="以程聿怀的身份与羌青瓷对话..."
+          placeholder=""
           @keyup.enter="sendMessage"
           @click="showOptions = false"
           :disabled="isProcessing"
