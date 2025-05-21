@@ -21,4 +21,5 @@ export interface Character {
     initialMessages: Message[];
     sceneInfo: SceneInfo;
     fallbackReplies?: string[];
+    backgroundDescription: string;
 } 

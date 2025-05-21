@@ -26,11 +26,30 @@ const isRecording = ref(false);
 const recordingDuration = ref(0);
 const recordingTimer = ref<number | null>(null);
 const isProcessing = ref(false);
+const errorMessage = ref('');
+const showError = ref(false);
 
 const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'ai-response']);
 
 // 根据角色ID动态生成选项
 const options = ref<string[]>([]);
+
+// 错误类型映射
+const errorTypes = {
+  'network': '网络连接异常，请检查网络设置',
+  'timeout': '请求超时，请稍后重试',
+  'api': 'API/服务器响应异常，请稍后重试',
+  'unknown': '发生未知错误，请稍后重试'
+};
+
+// 显示错误提示
+function showErrorMessage(type: keyof typeof errorTypes) {
+  errorMessage.value = errorTypes[type];
+  showError.value = true;
+  setTimeout(() => {
+    showError.value = false;
+  }, 3000);
+}
 
 // 更新对话选项
 function updateDialogOptions() {
@@ -129,8 +148,21 @@ async function sendMessage() {
       isProcessing.value = true;
       const aiResponse = await sendMessageToDeepSeek(userMessage);
       emit('ai-response', aiResponse);
-    } catch (error) {
+    } catch (error: any) {
       console.error('获取AI回复失败:', error);
+      
+      // 根据错误类型显示不同的错误提示
+      if (error.name === 'AbortError') {
+        showErrorMessage('timeout');
+      } else if (error.message?.includes('network')) {
+        showErrorMessage('network');
+      } else if (error.message?.includes('API')) {
+        showErrorMessage('api');
+      } else {
+        showErrorMessage('unknown');
+      }
+      
+      // 使用角色的fallback回复
       emit('ai-response', `(${props.currentCharacter.name}神情恍惚) 抱歉，我需要整理一下思绪...`);
     } finally {
       isProcessing.value = false;
@@ -218,6 +250,11 @@ async function stopRecording() {
 
 <template>
   <div class="input-container" ref="inputContainerRef">
+    <!-- 错误提示 -->
+    <div class="error-message" v-if="showError" :class="{ 'show': showError }">
+      {{ errorMessage }}
+    </div>
+    
     <div class="input-wrapper" :class="{ 'recording': isRecording }">
       <div class="voice-icon" @click="toggleInputMode">
         <RiMic2Line v-if="!isVoiceMode" />
@@ -435,5 +472,27 @@ input:disabled {
 
 .recording .voice-input-area {
   animation: pulse 1s infinite;
+}
+
+.error-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  text-align: center;
+  max-width: 80%;
+}
+
+.error-message.show {
+  opacity: 1;
 }
 </style> 

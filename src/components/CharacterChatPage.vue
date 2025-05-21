@@ -24,7 +24,15 @@ if (!scriptId || !characterId) {
 const currentCharacter = ref<Character>(getCharacterById(characterId) || getDefaultCharacter());
 
 // 消息列表
-const messages = ref<Message[]>([...currentCharacter.value.initialMessages]);
+const messages = ref<Message[]>([
+  {
+    id: Date.now(),
+    content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+    isUser: false,
+    hasAudio: false
+  },
+  ...currentCharacter.value.initialMessages
+]);
 
 // 进度信息
 const progress = ref(currentCharacter.value.sceneInfo.progress);
@@ -39,7 +47,15 @@ watch(() => route.params, (newParams) => {
   if (newCharacter) {
     currentCharacter.value = newCharacter;
     setCurrentCharacter(newCharacter);
-    messages.value = [...newCharacter.initialMessages];
+    messages.value = [
+      {
+        id: Date.now(),
+        content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
+        isUser: false,
+        hasAudio: false
+      },
+      ...newCharacter.initialMessages
+    ];
     progress.value = newCharacter.sceneInfo.progress;
     scrollToBottom();
   }
@@ -117,7 +133,15 @@ function showClearDialog() {
 }
 
 function clearChat() {
-  messages.value = [...currentCharacter.value.initialMessages];
+  messages.value = [
+    {
+      id: Date.now(),
+      content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+      isUser: false,
+      hasAudio: false
+    },
+    ...currentCharacter.value.initialMessages
+  ];
   clearChatHistory();
   progress.value = currentCharacter.value.sceneInfo.progress;
   showClearConfirm.value = false;
@@ -210,12 +234,21 @@ onMounted(() => {
           <div 
             v-for="message in messages" 
             :key="message.id"
-            :class="['message-container', message.isUser ? 'user-message' : 'character-message']"
+            :class="[
+              message.content.includes('background-description') 
+                ? 'background-message-container' 
+                : ['message-container', message.isUser ? 'user-message' : 'character-message']
+            ]"
           >
-            <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
-            <div class="message-bubble">
-              <div class="message-content" v-html="message.content"></div>
-            </div>
+            <template v-if="message.content.includes('background-description')">
+              <div class="background-description">{{ currentCharacter.backgroundDescription }}</div>
+            </template>
+            <template v-else>
+              <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
+              <div class="message-bubble">
+                <div class="message-content" v-html="message.content"></div>
+              </div>
+            </template>
           </div>
         </div>
         
@@ -249,6 +282,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
+/* 基础布局 */
 .chat-page {
   height: 100vh;
   position: relative;
@@ -258,6 +292,7 @@ onMounted(() => {
   overflow: hidden;
 }
 
+/* 背景相关 */
 .background-fixed {
   position: fixed;
   top: 0;
@@ -278,6 +313,7 @@ onMounted(() => {
   transition: opacity 0.3s ease;
 }
 
+/* 内容布局 */
 .content-wrapper {
   position: relative;
   z-index: 2;
@@ -286,6 +322,7 @@ onMounted(() => {
   flex-direction: column;
 }
 
+/* 场景信息 */
 .scene-container {
   background-color: rgba(26, 42, 42, 0.6);
   color: white;
@@ -309,6 +346,7 @@ onMounted(() => {
   font-size: 12px;
 }
 
+/* 进度条 */
 .progress-section {
   display: flex;
   align-items: center;
@@ -330,6 +368,100 @@ onMounted(() => {
   border-radius: 2px;
 }
 
+/* 聊天容器 */
+.chat-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  transition: height 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(18, 26, 26, 0.5);
+}
+
+.chat-wrapper:not(.collapsed) {
+  height: calc(100% - 50px - 80px);
+}
+
+.chat-wrapper.collapsed {
+  height: 40%;
+}
+
+.chat-container {
+  flex: 1;
+  width: 100%;
+  background-color: rgba(26, 42, 42, 0.3);
+  overflow-y: auto;
+  padding: 10px 0;
+  margin-top: 36px;
+  margin-bottom: 120px;
+}
+
+/* 消息样式 */
+.message-container {
+  display: flex;
+  margin: 8px 15px;
+  align-items: flex-start;
+}
+
+.user-message {
+  justify-content: flex-end;
+}
+
+.character-message {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  word-break: break-word;
+  backdrop-filter: blur(4px);
+}
+
+.user-message .message-bubble {
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #1a1a1a;
+  border-top-right-radius: 0;
+}
+
+.character-message .message-bubble {
+  background-color: rgba(26, 26, 26, 0.7);
+  color: #ffffff;
+  border-top-left-radius: 0;
+}
+
+.message-content {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* 背景介绍 */
+.background-message-container {
+  display: flex;
+  justify-content: center;
+  margin: 16px 15px;
+  width: calc(100% - 30px);
+}
+
+.background-description {
+  font-size: 13px;
+  color: #cccccc;
+  line-height: 1.5;
+  padding: 12px 16px;
+  max-width: 85%;
+  background-color: rgba(26, 26, 26, 0.4);
+  border-radius: 12px;
+  text-align: left;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: inline-block;
+  text-indent: 2em;
+}
+
+/* 控制栏 */
 .toggle-bar {
   display: flex;
   align-items: center;
@@ -380,49 +512,7 @@ onMounted(() => {
   transform: rotate(180deg);
 }
 
-.chat-wrapper {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  transition: height 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(18, 26, 26, 0.5);
-}
-
-.chat-wrapper:not(.collapsed) {
-  height: calc(100% - 50px - 80px);
-}
-
-.chat-wrapper.collapsed {
-  height: 40%;
-}
-
-.chat-container {
-  flex: 1;
-  width: 100%;
-  background-color: rgba(26, 42, 42, 0.3);
-  overflow-y: auto;
-  padding: 10px 0;
-  margin-top: 36px;
-  margin-bottom: 120px;
-}
-
-.message-container {
-  display: flex;
-  margin: 8px 15px;
-  align-items: flex-start;
-}
-
-.user-message {
-  justify-content: flex-end;
-}
-
-.character-message {
-  justify-content: flex-start;
-}
-
+/* 音频图标 */
 .audio-icon {
   margin-right: 8px;
   color: #cccccc;
@@ -430,35 +520,7 @@ onMounted(() => {
   margin-top: 5px;
 }
 
-.message-bubble {
-  max-width: 80%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  word-break: break-word;
-  backdrop-filter: blur(4px);
-}
-
-.user-message .message-bubble {
-  background-color: rgba(255, 255, 255, 0.8);
-  color: #1a1a1a;
-  border-top-right-radius: 0;
-}
-
-.character-message .message-bubble {
-  background-color: rgba(26, 26, 26, 0.7);
-  color: #ffffff;
-  border-top-left-radius: 0;
-}
-
-.message-content {
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-.chat-container::-webkit-scrollbar {
-  width: 0px;
-}
-
+/* 确认对话框 */
 .confirm-dialog {
   position: fixed;
   top: 0;
@@ -516,6 +578,7 @@ onMounted(() => {
   color: #fff;
 }
 
+/* 动画 */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease;
@@ -526,13 +589,8 @@ onMounted(() => {
   opacity: 0;
 }
 
-.viewpoint-indicator {
-  font-size: 0.8rem;
-  color: #f0e6d2;
-  padding: 2px 8px;
-  background-color: rgba(0, 0, 0, 0.4);
-  border-radius: 10px;
-  display: inline-block;
-  margin-top: 5px;
+/* 滚动条 */
+.chat-container::-webkit-scrollbar {
+  width: 0px;
 }
 </style> 
