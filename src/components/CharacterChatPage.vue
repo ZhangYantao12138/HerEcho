@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
@@ -33,6 +33,17 @@ const messages = ref<Message[]>([
   },
   ...currentCharacter.value.initialMessages
 ]);
+
+// 添加计算属性获取最近的两条消息
+const recentMessages = computed(() => {
+  if (!isCollapsed.value) return messages.value;
+  
+  // 过滤掉背景描述消息
+  const filteredMessages = messages.value.filter(msg => !msg.content.includes('background-description'));
+  
+  // 获取最近的两条消息
+  return filteredMessages.slice(-2);
+});
 
 // 进度信息
 const progress = ref(currentCharacter.value.sceneInfo.progress);
@@ -232,7 +243,7 @@ onMounted(() => {
           ref="chatContainerRef"
         >
           <div 
-            v-for="message in messages" 
+            v-for="message in (isCollapsed ? recentMessages : messages)" 
             :key="message.id"
             :class="[
               message.content.includes('background-description') 
@@ -385,7 +396,9 @@ onMounted(() => {
 }
 
 .chat-wrapper.collapsed {
-  height: 40%;
+  height: auto;
+  min-height: 40%;
+  max-height: 40%;
 }
 
 .chat-container {
@@ -396,6 +409,11 @@ onMounted(() => {
   padding: 10px 0;
   margin-top: 36px;
   margin-bottom: 120px;
+  transition: all 0.3s ease;
+}
+
+.chat-wrapper.collapsed .chat-container {
+  margin-bottom: 80px;
 }
 
 /* 消息样式 */
