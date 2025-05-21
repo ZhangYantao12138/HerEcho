@@ -113,7 +113,7 @@ export const playerPromptConfig = {
 export const systemPromptConfig = {
   // 模型回退降级设置
   fallbackSettings: {
-    maxRetries: 2,           // 最大重试次数
+    maxRetries: 3,           // 最大重试次数(增加)
     retryDelayMs: 2000,      // 重试间隔(毫秒)
     useDefaultFallback: true // 是否使用默认的回退回复
   },
@@ -122,16 +122,16 @@ export const systemPromptConfig = {
   globalAISettings: {
     model: 'deepseek-chat',  // 使用的模型
     defaultTemp: 0.7,        // 默认温度
-    maxContextTokens: 4096,  // 最大上下文长度
+    maxContextTokens: 3500,  // 最大上下文长度(降低以减少token消耗)
     topP: 0.9                // top_p值
   },
 
   // 字符数限制
   charLimits: {
     userInputMax: 1000,      // 用户输入最大字符数
-    systemPromptMax: 2000,   // 系统提示最大字符数
-    responseMax: 1000,       // 回复最大字符数
-    maxContextTokens: 4096   // 最大上下文token数
+    systemPromptMax: 1600,   // 系统提示最大字符数(降低)
+    responseMax: 800,        // 回复最大字符数(降低以减少token消耗)
+    maxContextTokens: 3500   // 最大上下文token数(降低)
   },
 
   // 安全设置
