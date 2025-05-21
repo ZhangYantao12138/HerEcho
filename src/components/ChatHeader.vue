@@ -85,10 +85,10 @@ onUnmounted(() => {
           </div>
           <div class="character-info">
             <div class="name">{{ currentCharacter.name }}</div>
-            <div class="details">
-              <span class="scene">{{ currentCharacter.sceneInfo.title }}</span>
-              <span class="viewpoint-badge">{{ viewpointDescription }}</span>
-            </div>
+            <div class="scene">{{ currentCharacter.sceneInfo.title }}</div>
+          </div>
+          <div v-if="viewpointDescription !== '默认视角'" class="viewpoint-tag">
+            {{ viewpointDescription }}
           </div>
         </div>
         
@@ -178,6 +178,8 @@ onUnmounted(() => {
   padding: 5px 10px;
   border-radius: 8px;
   transition: all 0.2s ease;
+  position: relative;
+  padding-right: 110px;  /* 为视角标签留出空间 */
 }
 
 .selected-character:hover {
@@ -210,25 +212,40 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-.character-info .details {
-  display: flex;
-  align-items: center;
+.character-info .scene {
+  color: #aaaaaa;
+  font-size: 12px;
   margin-top: 3px;
 }
 
-.scene {
-  color: #aaaaaa;
-  font-size: 12px;
-}
-
-.viewpoint-badge {
+.viewpoint-tag {
   font-size: 11px;
   color: #f0e6d2;
-  background-color: rgba(66, 184, 131, 0.2);
-  padding: 2px 6px;
-  border-radius: 8px;
-  border: 1px solid rgba(66, 184, 131, 0.4);
-  margin-left: 8px;
+  background-color: rgba(66, 184, 131, 0.3);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(66, 184, 131, 0.5);
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 0 5px rgba(66, 184, 131, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+}
+
+.viewpoint-tag:before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: #42b883;
+  border-radius: 50%;
+  margin-right: 5px;
 }
 
 .character-list {
