@@ -68,11 +68,11 @@ async function sendMessage() {
   if (inputText.value.trim()) {
     let userMessage = inputText.value.trim();
     
-    // 检查是否只有括号而没有实际内容
-    const onlyBracketsRegex = /^\([^)]*\)$/;
-    if (onlyBracketsRegex.test(userMessage)) {
-      // 根据当前角色添加适当的默认文本
-      const characterName = props.currentCharacter?.name || '羌青瓷';
+    // 检查是否只有括号没有正文
+    const bracketOnlyRegex = /^\([^)]*\)$/;
+    if (bracketOnlyRegex.test(userMessage)) {
+      // 如果只有括号，添加一个默认的文本内容
+      const characterName = props.currentCharacter?.name || '你';
       userMessage = `${userMessage} ${characterName}...`;
     }
     
@@ -94,13 +94,22 @@ async function sendMessage() {
 }
 
 async function selectOption(option: string) {
-  emit('select-option', option);
+  // 检查是否只有括号没有正文
+  let userOption = option;
+  const bracketOnlyRegex = /^\([^)]*\)$/;
+  if (bracketOnlyRegex.test(userOption)) {
+    // 如果只有括号，添加一个默认的文本内容
+    const characterName = props.currentCharacter?.name || '你';
+    userOption = `${userOption} ${characterName}...`;
+  }
+  
+  emit('select-option', userOption);
   showOptions.value = false;
   
   // 调用DeepSeek API获取回复
   try {
     isProcessing.value = true;
-    const aiResponse = await sendMessageToDeepSeek(option);
+    const aiResponse = await sendMessageToDeepSeek(userOption);
     emit('ai-response', aiResponse);
   } catch (error) {
     console.error('获取AI回复失败:', error);
