@@ -246,6 +246,7 @@ onMounted(() => {
           @send-voice="handleVoiceMessage"
           @ai-response="handleAIResponse"
           :isCollapsed="isCollapsed"
+          :currentCharacter="currentCharacter"
           :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
           :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
         />
