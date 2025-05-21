@@ -10,6 +10,8 @@ import BottomNav from './BottomNav.vue';
 import { clearChatHistory } from '../services/deepseekService';
 import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
+import type { ViewpointRelation } from '../types/viewpoint';
+import { VIEWPOINT_MAPPING } from '../services/viewpointService';
 
 // 使用Vite的资源导入方式导入背景图片
 import bgImageSrc from '../assets/character_qqc_B001C001.png';
@@ -21,8 +23,22 @@ const bgImage = bgImageSrc;
 // 当前角色 - 确保只定义一次，并使用 getDefaultCharacter
 const currentCharacter = ref<Character>(getDefaultCharacter());
 
+// 当前视角关系
+const currentViewpoint = ref<ViewpointRelation | undefined>(
+  VIEWPOINT_MAPPING.find(vp => vp.characterId === currentCharacter.value.id)
+);
+
+// 修改消息接口以包含isSystem属性
+interface ChatMessage {
+  id: number;
+  content: string;
+  isUser: boolean;
+  hasAudio: boolean;
+  isSystem?: boolean;
+}
+
 // 更新消息内容以符合羌青瓷和程聿怀的角色扮演场景
-const messages = ref([
+const messages = ref<ChatMessage[]>([
   {
     id: 1,
     content: '(摇晃着盛满白葡萄酒的高脚杯，背对着你靠在桌前。听到脚步声后歪了歪唇，没有回头，只是抿了一口杯中的酒，随后轻轻地把酒杯放在桌子上，轻声笑了) "牵，你来了。"',
@@ -54,6 +70,36 @@ const messages = ref([
     hasAudio: true
   }
 ]);
+
+// 视角切换处理
+function handleViewpointChange(viewpoint: ViewpointRelation) {
+  console.log('视角切换:', viewpoint);
+  currentViewpoint.value = viewpoint;
+  
+  // 添加视角切换的系统消息
+  let viewpointMessage = '';
+  switch (viewpoint.promptKey) {
+    case 'BJX_TO_CZL':
+      viewpointMessage = '【已切换到蒋伯驾视角】';
+      break;
+    case 'YS_TO_MHM':
+      viewpointMessage = '【已切换到以撒视角】';
+      break;
+    default:
+      viewpointMessage = '【已切换到默认视角】';
+  }
+  
+  // 添加系统消息
+  messages.value.push({
+    id: Date.now(),
+    content: viewpointMessage,
+    isUser: false,
+    hasAudio: false,
+    isSystem: true // 新增属性，标记为系统消息
+  });
+  
+  scrollToBottom();
+}
 
 // 情节信息
 const sceneInfo = {
@@ -195,7 +241,8 @@ onMounted(() => {
     <div class="content-wrapper">
       <ChatHeader
         :currentCharacter="currentCharacter"
-        @test-api="testApiConnection" 
+        @test-api="testApiConnection"
+        @change-viewpoint="handleViewpointChange" 
       />
 
       <div class="scene-container" v-if="!isCollapsed">
@@ -231,12 +278,17 @@ onMounted(() => {
           <div
             v-for="message in messages"
             :key="message.id"
-            :class="['message-container', message.isUser ? 'user-message' : 'character-message']"
+            :class="[
+              'message-container', 
+              message.isUser ? 'user-message' : 
+              message.isSystem ? 'system-message' : 'character-message'
+            ]"
           >
-            <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
-            <div class="message-bubble">
+            <div v-if="message.hasAudio && !message.isUser && !message.isSystem" class="audio-icon">🔊</div>
+            <div class="message-bubble" v-if="!message.isSystem">
               <div class="message-content" v-html="message.content"></div>
             </div>
+            <div v-else class="system-message-content">{{ message.content }}</div>
           </div>
         </div>
 
@@ -533,5 +585,21 @@ onMounted(() => {
 .confirm-button {
   background-color: #e74c3c;
   color: #fff;
+}
+
+.system-message {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.system-message-content {
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #bbb;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 80%;
 }
 </style>

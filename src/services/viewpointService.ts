@@ -4,18 +4,12 @@
  */
 
 import type { Character } from '../types/character';
+import type { ViewpointRelation } from '../types/viewpoint';
 import { playerPromptConfig } from '../config/promptConfig';
 import { generateDetailedPlayerPrompt } from '../config/playerPrompts';
 
-// 定义视角关系类型
-interface ViewpointRelation {
-  characterId: string;   // 对话对象ID
-  viewpointId: string;   // 视角角色ID
-  promptKey: string;     // 对应的prompt配置键名
-}
-
 // 定义视角映射，第一个ID是对话对象，第二个ID是视角角色
-const VIEWPOINT_MAPPING: ViewpointRelation[] = [
+export const VIEWPOINT_MAPPING: ViewpointRelation[] = [
   // 默认视角 - 程聿怀与羌青瓷
   { characterId: 'B001C001', viewpointId: 'B001C002', promptKey: '' },
   
@@ -78,4 +72,23 @@ export function getViewpointDescription(characterId: string): string {
     default:
       return '默认视角';
   }
+}
+
+/**
+ * 获取角色可用的视角关系列表
+ * @param characterId 角色ID
+ * @returns 可用的视角关系列表
+ */
+export function getAvailableViewpoints(characterId: string): ViewpointRelation[] {
+  // 返回所有可用的视角关系
+  return VIEWPOINT_MAPPING.filter(vp => vp.characterId === characterId);
+}
+
+/**
+ * 获取当前视角关系
+ * @param characterId 角色ID
+ * @returns 当前视角关系
+ */
+export function getCurrentViewpoint(characterId: string): ViewpointRelation | undefined {
+  return VIEWPOINT_MAPPING.find(vp => vp.characterId === characterId);
 } 

@@ -7,26 +7,40 @@ import {
 } from '@remixicon/vue';
 import { characters } from '../config/characters';
 import type { Character } from '../types/character';
-import { getViewpointDescription } from '../services/viewpointService';
+import { 
+  getViewpointDescription, 
+  getAvailableViewpoints, 
+  getCurrentViewpoint,
+  VIEWPOINT_MAPPING
+} from '../services/viewpointService';
+import ViewpointSelector from './ViewpointSelector.vue';
+import type { ViewpointRelation } from '../types/viewpoint';
 
 const router = useRouter();
 
-const props = defineProps({
-  currentCharacter: {
-    type: Object as () => Character,
-    required: true
-  }
-});
+const props = defineProps<{
+  currentCharacter: Character
+}>();
 
-const emit = defineEmits(['testApi']);
+const emit = defineEmits(['testApi', 'change-viewpoint']);
 
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 
-// 获取当前视角描述
-const viewpointDescription = computed(() => {
-  return getViewpointDescription(props.currentCharacter.id);
+// 获取可用的视角关系
+const availableViewpoints = computed(() => {
+  return getAvailableViewpoints(props.currentCharacter.id);
 });
+
+// 获取当前视角关系
+const currentViewpoint = computed(() => {
+  return getCurrentViewpoint(props.currentCharacter.id);
+});
+
+// 处理视角切换
+function handleViewpointChange(viewpoint: ViewpointRelation) {
+  emit('change-viewpoint', viewpoint);
+}
 
 // 返回剧本选择页
 function goBack() {
@@ -84,9 +98,6 @@ onUnmounted(() => {
             <div class="name">{{ currentCharacter.name }}</div>
             <div class="scene">{{ currentCharacter.sceneInfo.title }}</div>
           </div>
-          <div v-if="viewpointDescription !== '默认视角'" class="viewpoint-tag">
-            {{ viewpointDescription }}
-          </div>
         </div>
         
         <div class="character-list" v-if="showCharacterList">
@@ -110,6 +121,16 @@ onUnmounted(() => {
     </div>
     
     <div class="header-actions">
+      <!-- 视角选择器 -->
+      <ViewpointSelector 
+        v-if="availableViewpoints.length > 0"
+        :characterId="currentCharacter.id"
+        :viewpoints="availableViewpoints"
+        :currentViewpoint="currentViewpoint"
+        @select-viewpoint="handleViewpointChange"
+        class="viewpoint-selector-container"
+      />
+      
       <div class="icon-button" @click="handleTestApi">
         <RiTestTubeLine />
       </div>
@@ -166,8 +187,6 @@ onUnmounted(() => {
   padding: 5px 10px;
   border-radius: 8px;
   transition: all 0.2s ease;
-  position: relative;
-  padding-right: 110px;  /* 为视角标签留出空间 */
 }
 
 .selected-character:hover {
@@ -201,60 +220,29 @@ onUnmounted(() => {
 }
 
 .character-info .scene {
-  color: #aaaaaa;
+  color: #999999;
   font-size: 12px;
-  margin-top: 3px;
-}
-
-.viewpoint-tag {
-  font-size: 11px;
-  color: #f0e6d2;
-  background-color: rgba(66, 184, 131, 0.3);
-  padding: 4px 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(66, 184, 131, 0.5);
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  z-index: 5;
-  box-shadow: 0 0 5px rgba(66, 184, 131, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 500;
-}
-
-.viewpoint-tag:before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background-color: #42b883;
-  border-radius: 50%;
-  margin-right: 5px;
 }
 
 .character-list {
   position: absolute;
   top: 100%;
   left: 0;
-  background-color: #1a2122;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  width: 240px;
-  max-height: 320px;
+  width: 280px;
+  max-height: 400px;
   overflow-y: auto;
-  margin-top: 8px;
-  z-index: 10;
+  background-color: #1a1e1f;
+  border-radius: 8px;
+  margin-top: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 200;
 }
 
 .character-option {
   display: flex;
   align-items: center;
   padding: 10px 15px;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -263,8 +251,7 @@ onUnmounted(() => {
 }
 
 .character-option.selected {
-  background-color: rgba(66, 184, 131, 0.1);
-  border-left: 3px solid #42b883;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .character-option-info {
@@ -275,34 +262,38 @@ onUnmounted(() => {
 .character-option-info .name {
   color: #ffffff;
   font-size: 14px;
+  font-weight: 500;
 }
 
 .character-option-info .title {
-  color: #aaaaaa;
+  color: #999999;
   font-size: 12px;
-  margin-top: 3px;
 }
 
 .header-actions {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 15px;
+}
+
+.viewpoint-selector-container {
+  margin-right: 5px;
 }
 
 .icon-button {
-  width: 32px;
-  height: 32px;
+  color: #cccccc;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #aaa;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .icon-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 </style>
