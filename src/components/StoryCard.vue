@@ -1,17 +1,8 @@
 <script setup lang="ts">
+import type { DreamStory } from './DreamStoryList.vue';
+
 interface StoryCardProps {
-  story: {
-    id: string;
-    title: string;
-    description: string;
-    coverImage: string;
-    isNew: boolean;
-    isLocked?: boolean;
-    progress: number;
-    totalChapters?: number;
-    completedChapters?: number;
-    comingSoon?: boolean;
-  }
+  story: DreamStory
 }
 
 defineProps<StoryCardProps>();

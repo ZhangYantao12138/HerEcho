@@ -1,14 +1,8 @@
 <script setup lang="ts">
+import type { DreamStory } from './DreamStoryList.vue';
+
 interface StoryDetailsModalProps {
-  story: {
-    id: string;
-    title: string;
-    description: string;
-    coverImage: string;
-    progress: number;
-    totalChapters?: number;
-    completedChapters?: number;
-  } | null;
+  story: DreamStory | null;
   show: boolean;
 }
 

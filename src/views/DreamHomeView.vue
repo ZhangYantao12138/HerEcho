@@ -7,8 +7,7 @@ import DreamStoryList from '../components/DreamStoryList.vue';
 import DreamHeader from '../components/DreamHeader.vue';
 import type { DreamStory } from '../components/DreamStoryList.vue';
 import { 
-  getAllStories, 
-  getStoryById, 
+  getAllStories,
   showLockedMessage 
 } from '../services/dreamStoryService';
 
