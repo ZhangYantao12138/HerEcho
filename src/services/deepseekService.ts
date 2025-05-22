@@ -10,7 +10,7 @@ import type { Character } from '../types/character';
 
 // 从环境变量获取API密钥
 const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
-// 正确的API端点
+// API端点配置
 const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
 
 // 保存对话历史
@@ -24,6 +24,7 @@ const MAX_HISTORY = systemPromptConfig.charLimits.maxContextTokens > 0 ?
   Math.floor(systemPromptConfig.charLimits.maxContextTokens / 200) : 10; // 大约每条消息200 tokens
 const MAX_RETRY_ATTEMPTS = systemPromptConfig.fallbackSettings.maxRetries;
 const RETRY_DELAY = systemPromptConfig.fallbackSettings.retryDelayMs;
+const API_TIMEOUT = 30000; // 30秒超时
 
 let currentCharacter: Character = getDefaultCharacter();
 let chatHistory: ChatMessage[] = [
@@ -40,6 +41,90 @@ let lastFallbackIndex: number = -1;
 export function setCurrentCharacter(character: Character): void {
   currentCharacter = character;
   clearChatHistory();
+}
+
+/**
+ * 执行API请求
+ * @param messages 消息数组
+ * @param temperature 温度参数
+ * @returns API响应
+ */
+async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+  try {
+    console.log(`发送请求到DeepSeek API: ${apiUrl}`);
+    console.log(`使用的API Key: ${apiKey.substring(0, 10)}...`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: systemPromptConfig.globalAISettings.model,
+        messages: messages,
+        temperature: temperature,
+        max_tokens: systemPromptConfig.charLimits.responseMax,
+        top_p: systemPromptConfig.globalAISettings.topP,
+        stream: false
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('API响应错误:', response.status, errorText);
+      let errorMessage = `API错误 (${response.status})`;
+
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorMessage;
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
+
+      throw new Error(`DeepSeek API错误: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
+/**
+ * 获取回退回复
+ * @returns 回退回复文本
+ */
+function getFallbackResponse(): string {
+  const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
+    ? currentCharacter.fallbackReplies
+    : [
+      `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
+      `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
+      `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
+      `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
+    ];
+
+  // 智能选择回退回复，避免连续使用相同的回复
+  let newIndex;
+  if (fallbackResponses.length > 1) {
+    do {
+      newIndex = Math.floor(Math.random() * fallbackResponses.length);
+    } while (newIndex === lastFallbackIndex);
+    lastFallbackIndex = newIndex;
+  } else {
+    newIndex = 0;
+  }
+
+  return fallbackResponses[newIndex];
 }
 
 /**
@@ -71,59 +156,18 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
       }
     }
 
-    console.log(`发送请求到DeepSeek API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, apiUrl);
+    console.log(`发送请求到DeepSeek API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1})`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    // 调用API
+    const aiResponse = await callDeepSeekAPI(chatHistory);
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: systemPromptConfig.globalAISettings.model,
-          messages: chatHistory,
-          temperature: systemPromptConfig.globalAISettings.defaultTemp,
-          max_tokens: systemPromptConfig.charLimits.responseMax,
-          top_p: systemPromptConfig.globalAISettings.topP,
-          stream: false
-        }),
-        signal: controller.signal
-      });
+    // 添加回复到历史记录
+    chatHistory.push({
+      role: 'assistant',
+      content: aiResponse
+    });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API响应错误:', response.status, errorText);
-        let errorMessage = `API错误 (${response.status})`;
-
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error?.message || errorMessage;
-        } catch (e) {
-          errorMessage = errorText || errorMessage;
-        }
-
-        throw new Error(`DeepSeek API错误: ${errorMessage}`);
-      }
-
-      const data = await response.json();
-      const aiResponse = data.choices[0].message.content;
-
-      chatHistory.push({
-        role: 'assistant',
-        content: aiResponse
-      });
-
-      return aiResponse;
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
-    }
+    return aiResponse;
   } catch (error) {
     console.error(`调用DeepSeek API失败 (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, error);
 
@@ -139,27 +183,7 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
 
     // 所有重试都失败，使用回退回复
     if (systemPromptConfig.fallbackSettings.useDefaultFallback) {
-      const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
-        ? currentCharacter.fallbackReplies
-        : [
-          `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
-          `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
-          `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
-          `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
-        ];
-
-      // 智能选择回退回复，避免连续使用相同的回复
-      let newIndex;
-      if (fallbackResponses.length > 1) {
-        do {
-          newIndex = Math.floor(Math.random() * fallbackResponses.length);
-        } while (newIndex === lastFallbackIndex);
-        lastFallbackIndex = newIndex;
-      } else {
-        newIndex = 0;
-      }
-
-      const fallbackResponse = fallbackResponses[newIndex];
+      const fallbackResponse = getFallbackResponse();
 
       // 将回退回复也添加到聊天历史中，以保持连贯性
       chatHistory.push({
@@ -230,44 +254,18 @@ export async function getPlayerAutoResponse(characterMessage: string): Promise<s
 
     console.log('获取玩家自动回复...');
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: systemPromptConfig.globalAISettings.model,
-          messages: [
-            {
-              role: 'system',
-              content: playerPrompt
-            }
-          ],
-          temperature: systemPromptConfig.globalAISettings.defaultTemp + 0.1, // 玩家回复稍微更随机一些
-          max_tokens: systemPromptConfig.charLimits.responseMax,
-          top_p: systemPromptConfig.globalAISettings.topP,
-          stream: false
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`获取玩家回复失败: ${response.status}`);
+    // 构建单消息请求
+    const messages: ChatMessage[] = [
+      {
+        role: 'system',
+        content: playerPrompt
       }
+    ];
 
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      throw fetchError;
-    }
+    // 玩家回复稍微更随机一些
+    const temp = systemPromptConfig.globalAISettings.defaultTemp + 0.1;
+    
+    return await callDeepSeekAPI(messages, temp);
   } catch (error) {
     console.error('获取玩家自动回复失败:', error);
     return '(微微点头) 我明白了。';
