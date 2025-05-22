@@ -20,7 +20,7 @@ interface ChatMessage {
 }
 
 // 从配置文件获取参数
-const MAX_HISTORY = systemPromptConfig.charLimits.maxContextTokens > 0 ? 
+const MAX_HISTORY = systemPromptConfig.charLimits.maxContextTokens > 0 ?
   Math.floor(systemPromptConfig.charLimits.maxContextTokens / 200) : 10; // 大约每条消息200 tokens
 const MAX_RETRY_ATTEMPTS = systemPromptConfig.fallbackSettings.maxRetries;
 const RETRY_DELAY = systemPromptConfig.fallbackSettings.retryDelayMs;
@@ -53,7 +53,7 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
     if (message.length > systemPromptConfig.charLimits.userInputMax) {
       message = message.substring(0, systemPromptConfig.charLimits.userInputMax);
     }
-    
+
     // 添加用户消息到历史记录
     if (retryCount === 0) { // 只在首次尝试时添加用户消息，避免重试时重复添加
       chatHistory.push({
@@ -126,10 +126,10 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
     }
   } catch (error) {
     console.error(`调用DeepSeek API失败 (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, error);
-    
+
     // 如果还有重试次数，则进行重试
     if (retryCount < MAX_RETRY_ATTEMPTS) {
-      console.log(`${RETRY_DELAY/1000}秒后进行第${retryCount + 2}次尝试...`);
+      console.log(`${RETRY_DELAY / 1000}秒后进行第${retryCount + 2}次尝试...`);
       return new Promise(resolve => {
         setTimeout(() => {
           resolve(sendMessageToDeepSeek(message, retryCount + 1));
@@ -147,7 +147,7 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
           `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
           `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
         ];
-      
+
       // 智能选择回退回复，避免连续使用相同的回复
       let newIndex;
       if (fallbackResponses.length > 1) {
@@ -158,15 +158,15 @@ export async function sendMessageToDeepSeek(message: string, retryCount = 0): Pr
       } else {
         newIndex = 0;
       }
-      
+
       const fallbackResponse = fallbackResponses[newIndex];
-      
+
       // 将回退回复也添加到聊天历史中，以保持连贯性
       chatHistory.push({
         role: 'assistant',
         content: fallbackResponse
       });
-      
+
       return fallbackResponse;
     } else {
       // 如果禁用默认回退，则向上抛出错误
@@ -200,19 +200,19 @@ export async function refreshAIResponse(lastUserMessage?: string): Promise<strin
     console.log('没有可刷新的对话');
     return null;
   }
-  
+
   // 获取最后一条用户消息
   const userMessage = lastUserMessage || chatHistory.find(msg => msg.role === 'user')?.content;
   if (!userMessage) {
     console.log('找不到用户消息');
     return null;
   }
-  
+
   // 如果有AI回复，从历史记录中移除最后一条AI回复
   if (chatHistory.length > 1 && chatHistory[chatHistory.length - 1].role === 'assistant') {
     chatHistory.pop();
   }
-  
+
   // 重新请求AI回复
   console.log('刷新AI回复...');
   return sendMessageToDeepSeek(userMessage);
@@ -227,12 +227,12 @@ export async function getPlayerAutoResponse(characterMessage: string): Promise<s
   try {
     // 使用视角服务获取适当的玩家提示
     const playerPrompt = getViewpointPrompt(currentCharacter, characterMessage);
-    
+
     console.log('获取玩家自动回复...');
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
-    
+
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -255,13 +255,13 @@ export async function getPlayerAutoResponse(characterMessage: string): Promise<s
         }),
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-      
+
       if (!response.ok) {
         throw new Error(`获取玩家回复失败: ${response.status}`);
       }
-      
+
       const data = await response.json();
       return data.choices[0].message.content;
     } catch (fetchError) {
