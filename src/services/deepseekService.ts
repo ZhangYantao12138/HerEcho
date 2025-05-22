@@ -51,18 +51,18 @@ export function setCurrentCharacter(character: Character): void {
  */
 async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
     const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
-    console.log(`发送请求到DeepSeek API: ${apiUrl}`);
-    
-    // 检查API密钥是否存在
-    if (!apiKey) {
-      throw new Error('DeepSeek API密钥未设置。请在.env文件中添加VITE_DEEPSEEK_API_KEY');
-    }
-    
-    console.log(`使用的API Key: ${apiKey.substring(0, 5)}...`);
-    
+      console.log(`发送请求到DeepSeek API: ${apiUrl}`);
+      
+      // 检查API密钥是否存在
+      if (!apiKey) {
+        throw new Error('DeepSeek API密钥未设置。请在.env文件中添加VITE_DEEPSEEK_API_KEY');
+      }
+      
+      console.log(`使用的API Key: ${apiKey.substring(0, 5)}...`);
+      
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -70,11 +70,11 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-        model: systemPromptConfig.globalAISettings.model,
-        messages: messages,
-        temperature: temperature,
-        max_tokens: systemPromptConfig.charLimits.responseMax,
-        top_p: systemPromptConfig.globalAISettings.topP,
+          model: systemPromptConfig.globalAISettings.model,
+          messages: messages,
+          temperature: temperature,
+          max_tokens: systemPromptConfig.charLimits.responseMax,
+          top_p: systemPromptConfig.globalAISettings.topP,
           stream: false
         }),
         signal: controller.signal
@@ -98,12 +98,12 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
       }
 
       const data = await response.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
+      return data.choices[0].message.content;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
     }
+}
 
 /**
  * 获取回退回复
@@ -113,11 +113,11 @@ function getFallbackResponse(): string {
     const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
       ? currentCharacter.fallbackReplies
       : [
-        `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
-        `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
-        `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
-        `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
-      ];
+          `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
+          `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
+          `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
+          `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
+        ];
     
     // 智能选择回退回复，避免连续使用相同的回复
     let newIndex;
@@ -260,7 +260,7 @@ export async function refreshAIResponse(lastUserMessage?: string): Promise<strin
 /**
  * 获取玩家自动回复
  * @param characterMessage 角色的消息
- * @returns 返回生成的玩家回复
+ * @returns 返回生成的玩家回复选项，以|分隔
  */
 export async function getPlayerAutoResponse(characterMessage: string): Promise<string> {
   try {
@@ -273,16 +273,29 @@ export async function getPlayerAutoResponse(characterMessage: string): Promise<s
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content: playerPrompt
+        content: `${playerPrompt}\n\n请生成3个可能的回复选项，每个选项都应该符合角色的性格和当前情境。选项之间用|分隔。每个选项都应该包含动作描述（用括号括起来）和对话内容。例如：(轻轻摇头) 不，我不这么认为|(微笑) 你说得对|(皱眉思考) 让我想想...`
       }
     ];
 
     // 玩家回复稍微更随机一些
     const temp = systemPromptConfig.globalAISettings.defaultTemp + 0.1;
-    
-    return await callDeepSeekAPI(messages, temp);
+
+    const response = await callDeepSeekAPI(messages, temp);
+
+    // 确保返回的是有效的选项字符串
+    if (!response.includes('|')) {
+      // 如果没有分隔符，尝试将回复拆分成多个选项
+      const sentences = response.split(/[.!?。！？]/).filter(s => s.trim().length > 0);
+      if (sentences.length > 0) {
+        return sentences.slice(0, 3).join('|');
+      }
+      // 如果无法拆分，返回默认选项
+      return '(微微点头) 我明白了|(轻声说) 继续|(若有所思) 原来如此';
+    }
+
+    return response;
   } catch (error) {
     console.error('获取玩家自动回复失败:', error);
-    return '(微微点头) 我明白了。';
+    return '(微微点头) 我明白了|(轻声说) 继续|(若有所思) 原来如此';
   }
-} 
+}
