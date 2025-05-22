@@ -56,7 +56,7 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
   try {
     console.log(`发送请求到DeepSeek API: ${apiUrl}`);
     console.log(`使用的API Key: ${apiKey.substring(0, 10)}...`);
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -245,7 +245,7 @@ export async function refreshAIResponse(lastUserMessage?: string): Promise<strin
 /**
  * 获取玩家自动回复
  * @param characterMessage 角色的消息
- * @returns 返回生成的玩家回复
+ * @returns 返回生成的玩家回复选项，以|分隔
  */
 export async function getPlayerAutoResponse(characterMessage: string): Promise<string> {
   try {
@@ -258,16 +258,29 @@ export async function getPlayerAutoResponse(characterMessage: string): Promise<s
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content: playerPrompt
+        content: `${playerPrompt}\n\n请生成3个可能的回复选项，每个选项都应该符合角色的性格和当前情境。选项之间用|分隔。每个选项都应该包含动作描述（用括号括起来）和对话内容。例如：(轻轻摇头) 不，我不这么认为|(微笑) 你说得对|(皱眉思考) 让我想想...`
       }
     ];
 
     // 玩家回复稍微更随机一些
     const temp = systemPromptConfig.globalAISettings.defaultTemp + 0.1;
-    
-    return await callDeepSeekAPI(messages, temp);
+
+    const response = await callDeepSeekAPI(messages, temp);
+
+    // 确保返回的是有效的选项字符串
+    if (!response.includes('|')) {
+      // 如果没有分隔符，尝试将回复拆分成多个选项
+      const sentences = response.split(/[.!?。！？]/).filter(s => s.trim().length > 0);
+      if (sentences.length > 0) {
+        return sentences.slice(0, 3).join('|');
+      }
+      // 如果无法拆分，返回默认选项
+      return '(微微点头) 我明白了|(轻声说) 继续|(若有所思) 原来如此';
+    }
+
+    return response;
   } catch (error) {
     console.error('获取玩家自动回复失败:', error);
-    return '(微微点头) 我明白了。';
+    return '(微微点头) 我明白了|(轻声说) 继续|(若有所思) 原来如此';
   }
 } 
