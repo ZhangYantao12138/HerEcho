@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 // 解决方案一：选择 main 分支的图标导入
 import { RiDeleteBin2Line } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
@@ -229,6 +229,17 @@ function cancelClear() {
   showClearConfirm.value = false;
 }
 
+// 添加计算属性获取最后的消息
+const lastUserMessage = computed(() => {
+  const userMessages = messages.value.filter(m => m.isUser);
+  return userMessages.length > 0 ? userMessages[userMessages.length - 1] : undefined;
+});
+
+const lastCharacterMessage = computed(() => {
+  const characterMessages = messages.value.filter(m => !m.isUser && !m.isSystem);
+  return characterMessages.length > 0 ? characterMessages[characterMessages.length - 1] : undefined;
+});
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -301,8 +312,8 @@ onMounted(() => {
           @ai-response="handleAIResponse"
           :isCollapsed="isCollapsed"
           :currentCharacter="currentCharacter"
-          :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
-          :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
+          :lastUserMessage="lastUserMessage"
+          :lastCharacterMessage="lastCharacterMessage"
         />
       </div>
 

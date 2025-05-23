@@ -60,7 +60,7 @@ function closeDetails() {
     <DreamStoryList 
       :stories="dreamStories" 
       @select-story="enterDreamStory" 
-    />
+      />
     
     <!-- 故事详情弹窗 -->
     <StoryDetailsModal
