@@ -1,5 +1,5 @@
 import { getCharacterById, getDefaultCharacter } from '../config/characters';
-import { generateCharacterPrompt, generatePlayerPrompt, generateAutoReplyPrompt } from './promptService';
+import { generatePlayerPrompt, generateAutoReplyPrompt } from './promptService';
 import { systemPromptConfig } from '../config/promptConfig';
 import type { Character } from '../types/character';
 import type { Message } from '../types/chat';

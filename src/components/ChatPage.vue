@@ -7,7 +7,7 @@ import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
 // 解决方案二：选择 main 分支的服务导入
-import { clearChatHistory } from '../services/deepseekService';
+import { clearChatHistory } from '../services/chatService';
 import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
 import type { ViewpointRelation } from '../types/viewpoint';
