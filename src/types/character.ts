@@ -16,10 +16,17 @@ export interface Character {
     book_id: string;
     name: string;
     avatar: string;
-    backgroundImage: string;
-    systemPrompt: string;
-    initialMessages: Message[];
-    sceneInfo: SceneInfo;
-    fallbackReplies?: string[];
     backgroundDescription: string;
+    systemPrompt: string;
+    backgroundImage: string;
+    sceneInfo: {
+        title: string;
+        stage: string;
+        progress: number;
+    };
+    initialMessages: Message[];
+    fallbackReplies?: string[];
+    personality?: string;
+    relationships?: string;
+    currentState?: string;
 } 

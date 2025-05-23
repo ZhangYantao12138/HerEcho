@@ -5,9 +5,10 @@ import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
-import { clearChatHistory, sendMessageToDeepSeek, setCurrentCharacter } from '../services/deepseekService';
+import { clearChatHistory, generateCharacterReply, setCurrentCharacter, generatePlayerReply } from '../services/chatService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
+import { VIEWPOINT_MAPPING } from '../config/viewpointConfig';
 
 // 获取路由参数
 const route = useRoute();
@@ -52,21 +53,49 @@ const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
 
 // 监听路由参数变化
-watch(() => route.params, (newParams) => {
+watch(() => route.params, async (newParams) => {
   const newCharacterId = newParams.characterId as string;
   const newCharacter = getCharacterById(newCharacterId);
   if (newCharacter) {
+    // 设置新角色
     currentCharacter.value = newCharacter;
     setCurrentCharacter(newCharacter);
+    
+    // 清除历史记录
+    clearChatHistory();
+    
+    // 重置消息列表
     messages.value = [
       {
         id: Date.now(),
         content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
         isUser: false,
         hasAudio: false
-      },
-      ...newCharacter.initialMessages
+      }
     ];
+    
+    // 检查是否有对应的玩家视角
+    const viewpoint = VIEWPOINT_MAPPING.find(vp => vp.characterId === newCharacterId);
+    if (viewpoint) {
+      // 如果有玩家视角，生成玩家视角的初始消息
+      try {
+        const playerPrompt = `你现在是${newCharacter.name}，请用简短的话开始对话。`;
+        const playerResponse = await generatePlayerReply(newCharacterId, playerPrompt);
+        messages.value.push({
+          id: Date.now(),
+          content: playerResponse,
+          isUser: false,
+          hasAudio: true
+        });
+      } catch (error) {
+        console.error('生成玩家视角消息失败:', error);
+      }
+    }
+    
+    // 添加角色的初始消息
+    messages.value.push(...newCharacter.initialMessages);
+    
+    // 重置进度
     progress.value = newCharacter.sceneInfo.progress;
     scrollToBottom();
   }
@@ -166,7 +195,7 @@ function cancelClear() {
 async function testApiConnection() {
   try {
     const testMessage = "测试消息，请简短回复";
-    const response = await sendMessageToDeepSeek(testMessage);
+    const response = await generateCharacterReply(currentCharacter.value.id, testMessage);
     
     messages.value.push({
       id: Date.now(),
