@@ -97,12 +97,12 @@ export const playerPromptConfig = {
   temperature: 0.8,
 
   // 最大输出token数
-  maxTokens: 400,
+  maxTokens: 300,
 
   // 玩家角色回复的通用风格
   generalPlayerStyle: {
     emotionExpression: 0.7, // 情感表达程度
-    responseLength: 0.5,    // 回复长度倾向(0-1，值越大表示更长)
+    responseLength: 0.3,    // 回复长度倾向(0-1，值越大表示更长)
     rolePlayLevel: 0.8      // 角色扮演程度(0-1，值越大表示更加投入角色)
   },
 
