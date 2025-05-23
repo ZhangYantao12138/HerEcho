@@ -26,21 +26,29 @@ export const VIEWPOINT_MAPPING: ViewpointRelation[] = [
   { characterId: 'B001C008', viewpointId: 'B001C007', promptKey: 'MHM_TO_YS' },
 
   // 6. 蒋伯驾(B001C006) 对话时，玩家视角为程走柳(B001C004)
-  { characterId: 'B001C006', viewpointId: 'B001C004', promptKey: 'CZL_TO_JBJ' }
+  { characterId: 'B001C006', viewpointId: 'B001C004', promptKey: 'CZL_TO_JBJ' },
+
+  // 7. 黛利拉(B001C005) 对话时，玩家视角为阿奇(B001C009)
+  { characterId: 'B001C005', viewpointId: 'B001C009', promptKey: 'AQ_TO_DLL' },
+
+  // 8. 阿奇(B001C009) 对话时，玩家视角为黛利拉(B001C005)
+  { characterId: 'B001C009', viewpointId: 'B001C005', promptKey: 'DLL_TO_AQ' }
 ];
 
 /**
  * 视角描述映射
  * 将promptKey映射到可读性更好的描述
  */
-export const VIEWPOINT_DESCRIPTIONS = {
+export const VIEWPOINT_DESCRIPTIONS: Record<string, string> = {
   'CYC_TO_QQC': '程聿怀视角',
   'QQC_TO_CYC': '羌青瓷视角',
   'JBJ_TO_CZL': '蒋伯驾视角',
   'YS_TO_MHM': '以撒视角',
   'MHM_TO_YS': '缪宏谟视角',
   'CZL_TO_JBJ': '程走柳视角',
-  'DEFAULT': '默认视角'
+  'DEFAULT': '默认视角',
+  'AQ_TO_DLL': '阿奇视角',
+  'DLL_TO_AQ': '黛利拉视角'
 };
 
 /**

@@ -7,7 +7,7 @@ import {
   RiAddCircleLine,
   RiLoader4Line 
 } from '@remixicon/vue';
-import { sendMessageToDeepSeek, getPlayerAutoResponse } from '../services/deepseekService';
+import { generateCharacterReply, generateAutoReplies } from '../services/chatService';
 
 const props = defineProps({
   isCollapsed: {
@@ -125,9 +125,12 @@ onUnmounted(() => {
 });
 
 // 监听角色变化，更新选项并处理自动回复
-watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
+watch(() => props.currentCharacter, async (newCharacter, oldCharacter) => {
   // 更新对话选项
   updateDialogOptions();
+  
+  // 清空自动回复选项
+  autoReplyOptions.value = [];
   
   // 如果新角色是羌青瓷 (B001C001) 并且旧角色是程聿怀之一 (B001C002或B001C003)
   if (newCharacter?.id === 'B001C001' && 
@@ -139,16 +142,23 @@ watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
   }
 }, { deep: true });
 
+// 监听最后一条角色消息变化
+watch(() => props.lastCharacterMessage, async (newMessage) => {
+  if (newMessage) {
+    // 清空之前的自动回复选项
+    autoReplyOptions.value = [];
+    // 生成新的自动回复选项
+    await generateAutoReplyOptions();
+  }
+}, { deep: true });
+
 // 生成自动回复选项
 async function generateAutoReplyOptions() {
   if (!props.lastCharacterMessage || isGeneratingAutoReply.value) return;
   
   try {
     isGeneratingAutoReply.value = true;
-    const response = await getPlayerAutoResponse(props.lastCharacterMessage.content);
-    
-    // 解析返回的选项（假设返回格式为 "选项1|选项2|选项3"）
-    const options = response.split('|').map(opt => opt.trim()).filter(opt => opt);
+    const options = await generateAutoReplies(props.currentCharacter.id, props.lastCharacterMessage.content);
     autoReplyOptions.value = options;
   } catch (error) {
     console.error('生成自动回复选项失败:', error);
@@ -181,10 +191,10 @@ async function selectOption(option: string) {
   emit('select-option', userOption);
   showOptions.value = false;
   
-  // 调用DeepSeek API获取回复
+  // 调用AI服务获取回复
   try {
     isProcessing.value = true;
-    const aiResponse = await sendMessageToDeepSeek(userOption);
+    const aiResponse = await generateCharacterReply(props.currentCharacter.id, userOption);
     emit('ai-response', aiResponse);
   } catch (error) {
     console.error('获取AI回复失败:', error);
@@ -209,10 +219,10 @@ async function sendMessage() {
     emit('send-message', userMessage);
     inputText.value = '';
     
-    // 调用DeepSeek API获取回复
+    // 调用AI服务获取回复
     try {
       isProcessing.value = true;
-      const aiResponse = await sendMessageToDeepSeek(userMessage);
+      const aiResponse = await generateCharacterReply(props.currentCharacter.id, userMessage);
       emit('ai-response', aiResponse);
     } catch (error: any) {
       console.error('获取AI回复失败:', error);
@@ -270,7 +280,7 @@ async function stopRecording() {
     
     try {
       isProcessing.value = true;
-      const aiResponse = await sendMessageToDeepSeek(voicePrompt);
+      const aiResponse = await generateCharacterReply(props.currentCharacter.id, voicePrompt);
       emit('ai-response', aiResponse);
     } catch (error) {
       console.error('获取AI回复失败:', error);
