@@ -42,6 +42,8 @@ const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'ai-res
 
 // 根据角色ID动态生成选项
 const options = ref<string[]>([]);
+const autoReplyOptions = ref<string[]>([]);
+const isGeneratingAutoReply = ref(false);
 
 // 错误类型映射
 const errorTypes = {
@@ -137,18 +139,12 @@ watch(() => props.currentCharacter, (newCharacter, oldCharacter) => {
   }
 }, { deep: true });
 
-// 添加自动回复相关状态
-const showAutoReply = ref(false);
-const autoReplyOptions = ref<string[]>([]);
-const isGeneratingAutoReply = ref(false);
-
 // 生成自动回复选项
 async function generateAutoReplyOptions() {
   if (!props.lastCharacterMessage || isGeneratingAutoReply.value) return;
   
   try {
     isGeneratingAutoReply.value = true;
-    showAutoReply.value = true; // 立即显示面板，显示加载状态
     const response = await getPlayerAutoResponse(props.lastCharacterMessage.content);
     
     // 解析返回的选项（假设返回格式为 "选项1|选项2|选项3"）
@@ -156,45 +152,43 @@ async function generateAutoReplyOptions() {
     autoReplyOptions.value = options;
   } catch (error) {
     console.error('生成自动回复选项失败:', error);
-    showAutoReply.value = false;
+    showErrorMessage('api');
   } finally {
     isGeneratingAutoReply.value = false;
   }
 }
 
-// 监听角色消息变化，自动生成回复选项
-watch(() => props.lastCharacterMessage, (newMessage) => {
-  if (newMessage && !newMessage.isUser) {
-    generateAutoReplyOptions();
+// 切换选项面板
+async function toggleOptions() {
+  showOptions.value = !showOptions.value;
+  
+  // 如果打开面板且还没有生成过选项，则开始生成
+  if (showOptions.value && autoReplyOptions.value.length === 0) {
+    await generateAutoReplyOptions();
   }
-}, { immediate: true });
+}
 
-// 选择自动回复选项
-async function selectAutoReply(option: string) {
-  emit('send-message', option);
-  showAutoReply.value = false;
+// 选择选项
+async function selectOption(option: string) {
+  // 检查是否只有括号没有正文
+  let userOption = option;
+  const bracketOnlyRegex = /^\([^)]*\)$/;
+  if (bracketOnlyRegex.test(userOption)) {
+    const characterName = props.currentCharacter?.name || '你';
+    userOption = `${userOption} ${characterName}...`;
+  }
+  
+  emit('select-option', userOption);
+  showOptions.value = false;
   
   // 调用DeepSeek API获取回复
   try {
     isProcessing.value = true;
-    const aiResponse = await sendMessageToDeepSeek(option);
+    const aiResponse = await sendMessageToDeepSeek(userOption);
     emit('ai-response', aiResponse);
-  } catch (error: any) {
+  } catch (error) {
     console.error('获取AI回复失败:', error);
-    
-    // 根据错误类型显示不同的错误提示
-    if (error.name === 'AbortError') {
-      showErrorMessage('timeout');
-    } else if (error.message?.includes('network')) {
-      showErrorMessage('network');
-    } else if (error.message?.includes('API')) {
-      showErrorMessage('api');
-    } else {
-      showErrorMessage('unknown');
-    }
-    
-    // 使用角色的fallback回复
-    emit('ai-response', `(${props.currentCharacter.name}神情恍惚) 抱歉，我需要整理一下思绪...`);
+    emit('ai-response', `(${props.currentCharacter.name}轻轻叹息) 我们的连接似乎出了些问题，能稍后再谈吗？`);
   } finally {
     isProcessing.value = false;
   }
@@ -240,36 +234,6 @@ async function sendMessage() {
       isProcessing.value = false;
     }
   }
-}
-
-async function selectOption(option: string) {
-  // 检查是否只有括号没有正文
-  let userOption = option;
-  const bracketOnlyRegex = /^\([^)]*\)$/;
-  if (bracketOnlyRegex.test(userOption)) {
-    // 如果只有括号，添加一个默认的文本内容
-    const characterName = props.currentCharacter?.name || '你';
-    userOption = `${userOption} ${characterName}...`;
-  }
-  
-  emit('select-option', userOption);
-  showOptions.value = false;
-  
-  // 调用DeepSeek API获取回复
-  try {
-    isProcessing.value = true;
-    const aiResponse = await sendMessageToDeepSeek(userOption);
-    emit('ai-response', aiResponse);
-  } catch (error) {
-    console.error('获取AI回复失败:', error);
-    emit('ai-response', `(${props.currentCharacter.name}轻轻叹息) 我们的连接似乎出了些问题，能稍后再谈吗？`);
-  } finally {
-    isProcessing.value = false;
-  }
-}
-
-function toggleOptions() {
-  showOptions.value = !showOptions.value;
 }
 
 function toggleInputMode() {
@@ -322,30 +286,25 @@ async function stopRecording() {
 
 <template>
   <div class="input-container" ref="inputContainerRef">
-    <!-- 自动回复选项面板 -->
-    <div v-if="showAutoReply" class="auto-reply-panel">
-      <div class="auto-reply-header">
-        <span>选择回复</span>
-        <div class="close-button" @click="showAutoReply = false">×</div>
-      </div>
-      <div class="auto-reply-options">
-        <template v-if="isGeneratingAutoReply">
-          <div class="auto-reply-loading">
-            <RiLoader4Line class="loading-icon" />
-            <span>正在生成回复选项...</span>
-          </div>
-        </template>
-        <template v-else>
-          <div 
-            v-for="(option, index) in autoReplyOptions" 
-            :key="index"
-            class="auto-reply-option"
-            @click="selectAutoReply(option)"
-          >
-            {{ option }}
-          </div>
-        </template>
-      </div>
+    <!-- 选项面板 -->
+    <div v-if="showOptions" class="options-panel">
+      <template v-if="isGeneratingAutoReply">
+        <div class="option-item loading">
+          <RiLoader4Line class="loading-icon" />
+          <span>正在生成回复选项...</span>
+        </div>
+      </template>
+      <template v-else>
+        <div 
+          v-for="(option, index) in autoReplyOptions" 
+          :key="index" 
+          class="option-item"
+          @click="selectOption(option)"
+          :class="{ 'disabled': isProcessing }"
+        >
+          {{ option }}
+        </div>
+      </template>
     </div>
     
     <!-- 错误提示 -->
@@ -401,18 +360,6 @@ async function stopRecording() {
           </div>
         </div>
       </template>
-    </div>
-    
-    <div v-if="showOptions" class="options-panel">
-      <div 
-        v-for="(option, index) in options" 
-        :key="index" 
-        class="option-item"
-        @click="selectOption(option)"
-        :class="{ 'disabled': isProcessing }"
-      >
-        {{ option }}
-      </div>
     </div>
   </div>
 </template>
@@ -542,6 +489,48 @@ input:disabled {
   cursor: not-allowed;
 }
 
+.option-item.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #999;
+  cursor: wait;
+}
+
+.loading-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.chat-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 22px;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.chat-options.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat-options.loading {
+  cursor: wait;
+}
+
+.chat-options.loading .loading-icon {
+  font-size: 20px;
+  color: #42b883;
+}
+
 .voice-input-area {
   flex: 1;
   text-align: center;
@@ -600,97 +589,5 @@ input:disabled {
 
 .error-message.show {
   opacity: 1;
-}
-
-.auto-reply-panel {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  background-color: #2a2a2a;
-  border-radius: 10px 10px 0 0;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-  padding: 10px;
-  z-index: 15;
-  width: calc(100% - 30px);
-  margin: 0 auto;
-  left: 15px;
-}
-
-.auto-reply-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid #3a3a3a;
-  color: #ccc;
-  font-size: 14px;
-}
-
-.close-button {
-  cursor: pointer;
-  font-size: 18px;
-  color: #999;
-  padding: 0 5px;
-}
-
-.close-button:hover {
-  color: #fff;
-}
-
-.auto-reply-options {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.auto-reply-option {
-  padding: 12px;
-  border-bottom: 1px solid #3a3a3a;
-  font-size: 14px;
-  cursor: pointer;
-  color: #eee;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.auto-reply-option:last-child {
-  border-bottom: none;
-}
-
-.auto-reply-option:hover {
-  background-color: #333;
-}
-
-.loading-icon {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.auto-reply-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  color: #999;
-  font-size: 14px;
-  gap: 8px;
-}
-
-.auto-reply-loading .loading-icon {
-  font-size: 18px;
-}
-
-.chat-options.loading {
-  cursor: wait;
-}
-
-.chat-options.loading .loading-icon {
-  font-size: 20px;
-  color: #42b883;
 }
 </style> 
