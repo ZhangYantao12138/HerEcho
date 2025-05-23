@@ -37,6 +37,7 @@ function closeDetails() {
 
 function startChat() {
   if (!props.script || !selectedCharacter.value) return;
+  console.log(`用户开始了剧本: ${props.script.title}(${props.script.id})，使用角色: ${selectedCharacter.value.name}(${selectedCharacter.value.id})`);
   emit('start', { 
     script: props.script, 
     characterId: selectedCharacter.value.id 
@@ -44,6 +45,7 @@ function startChat() {
 }
 
 function selectCharacter(character: Character) {
+  console.log(`用户在剧本详情中选择了角色: ${character.name}(${character.id})`);
   selectedCharacter.value = character;
   showDropdown.value = false;
 }

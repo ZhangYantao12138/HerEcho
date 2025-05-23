@@ -67,6 +67,7 @@ function toggleCharacterList() {
 
 // 选择角色
 function selectCharacter(character: Character) {
+  console.log(`用户选择了角色: ${character.name}(${character.id}), 剧本ID: ${scriptId.value}`);
   // 确保 scriptId.value 能正确获取
   router.push(`/chat/${scriptId.value}/${character.id}`);
   showCharacterList.value = false;
@@ -100,7 +101,7 @@ onUnmounted(() => {
   <header class="chat-header">
     <div class="left-section">
       <button class="back-button" @click="goBack">
-        <RiArrowLeftSLine />
+      <RiArrowLeftSLine />
       </button>
 
       <div class="character-selector" @click="toggleCharacterList" ref="characterSelectorRef">
@@ -112,16 +113,16 @@ onUnmounted(() => {
             <div class="name">{{ props.currentCharacter.name }}</div>
             <div class="scene">{{ props.currentCharacter.sceneInfo.title }}</div>
             </div>
-        </div>
+    </div>
 
         <div class="character-list" v-if="showCharacterList">
-          <div
+        <div
             v-for="character in availableCharacters"
-            :key="character.id"
+          :key="character.id"
             class="character-option"
             :class="{ 'selected': character.id === props.currentCharacter.id }"
             @click="selectCharacter(character)"
-          >
+        >
             <div class="character-avatar">
               <img :src="character.avatar" alt="">
             </div>

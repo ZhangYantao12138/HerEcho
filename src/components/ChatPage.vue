@@ -73,7 +73,7 @@ const messages = ref<ChatMessage[]>([
 
 // 视角切换处理
 function handleViewpointChange(viewpoint: ViewpointRelation) {
-  console.log('视角切换:', viewpoint);
+  console.log(`用户切换视角关系: ${viewpoint.promptKey}, 角色: ${currentCharacter.value.name}(${currentCharacter.value.id})`);
   currentViewpoint.value = viewpoint;
   
   // 添加视角切换的系统消息
@@ -127,8 +127,9 @@ const testApiConnection = async () => {
   }
 };
 
-
+// 发送消息
 function sendMessage(text: string) {
+  console.log(`用户发送消息: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}" 给角色: ${currentCharacter.value.name}(${currentCharacter.value.id})`);
   addUserMessage(text);
   // 不再需要这里的自动回复，因为会由AI响应事件处理
 }
@@ -146,6 +147,7 @@ function handleAIResponse(response: string) {
     hasAudio: true
   });
 
+  console.log(`角色 ${currentCharacter.value.name}(${currentCharacter.value.id}) 回复了消息`);
   updateProgress();
   scrollToBottom();
 }
@@ -241,7 +243,7 @@ onMounted(() => {
     <div class="content-wrapper">
       <ChatHeader
         :currentCharacter="currentCharacter"
-        @test-api="testApiConnection"
+        @test-api="testApiConnection" 
         @change-viewpoint="handleViewpointChange" 
       />
 

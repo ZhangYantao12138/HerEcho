@@ -37,8 +37,18 @@ let chatHistory: ChatMessage[] = [
 // 用于存储上次使用的回退回复索引，避免连续使用相同的回复
 let lastFallbackIndex: number = -1;
 
+// 用于记录角色使用统计
+const characterUsageStats: Record<string, number> = {};
+
 // 设置当前角色
 export function setCurrentCharacter(character: Character): void {
+  // 记录角色使用次数
+  if (character.id) {
+    characterUsageStats[character.id] = (characterUsageStats[character.id] || 0) + 1;
+    console.log(`角色使用统计 - ${character.name}(${character.id}): ${characterUsageStats[character.id]}次`);
+    console.log('所有角色使用统计:', JSON.stringify(characterUsageStats, null, 2));
+  }
+  
   currentCharacter = character;
   clearChatHistory();
 }
@@ -140,6 +150,11 @@ function getFallbackResponse(): string {
  */
 export async function sendMessageToDeepSeek(message: string, retryCount = 0): Promise<string> {
   try {
+    // 记录当前角色交互次数
+    if (currentCharacter.id && retryCount === 0) {
+      console.log(`用户与 ${currentCharacter.name}(${currentCharacter.id}) 进行了对话`);
+    }
+    
     // 检查用户输入是否超过限制
     if (message.length > systemPromptConfig.charLimits.userInputMax) {
       message = message.substring(0, systemPromptConfig.charLimits.userInputMax);
