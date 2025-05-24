@@ -1,9 +1,12 @@
 # HerEcho 项目修改记录
 
 
-## 2025-05-23 Russo 优化：角色提示词优化
+## 2025-05-23 Russo 优化：角色提示词优化；no think
 ### 1. 角色prompt优化
 - 在character.ts中修改了角色的prompt，使其与对话的对象的语气更符合关系
+
+### 2. deepseek参数修改
+- 开启了no think 选项
 
 
 ## 2025-05-23 Russo feat：自动回复功能优化；玩家角色匹配；角色新增
