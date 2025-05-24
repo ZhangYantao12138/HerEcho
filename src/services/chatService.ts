@@ -84,7 +84,8 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
                 temperature: temperature,
                 max_tokens: systemPromptConfig.charLimits.responseMax,
                 top_p: systemPromptConfig.globalAISettings.topP,
-                stream: false
+                stream: false,
+                no_think: true
             }),
             signal: controller.signal
         });

@@ -128,9 +128,9 @@ export const systemPromptConfig = {
   // 全局AI设置
   globalAISettings: {
     model: 'deepseek-chat',  // 使用的模型
-    defaultTemp: 0.7,        // 默认温度
-    maxContextTokens: 3500,  // 最大上下文长度(降低以减少token消耗)
-    topP: 0.9                // top_p值
+    defaultTemp: 0.9,        // 默认温度（提高以增加随机性）
+    maxContextTokens: 3500,  // 最大上下文长度
+    topP: 0.95               // top_p值（提高以增加多样性）
   },
 
   // 字符数限制
