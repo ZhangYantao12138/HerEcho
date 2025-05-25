@@ -1,8 +1,6 @@
 import mongoose from 'mongoose';
-
 // MongoDB连接配置
 const MONGODB_URI = process.env.MONGODB_URI || process.env.ZEABUR_MONGODB_URI || 'mongodb://localhost:27017/herecho';
-
 // 定义日志模型
 const chatLogSchema = new mongoose.Schema({
     userId: String,
@@ -18,7 +16,6 @@ const chatLogSchema = new mongoose.Schema({
         tokensUsed: Number
     }
 });
-
 const userStatsSchema = new mongoose.Schema({
     userId: String,
     totalSessions: { type: Number, default: 0 },
@@ -29,106 +26,89 @@ const userStatsSchema = new mongoose.Schema({
     manualInputUsage: { type: Number, default: 0 },
     lastActive: { type: Date, default: Date.now }
 });
-
 // 创建模型
 const ChatLog = mongoose.model('ChatLog', chatLogSchema);
 const UserStats = mongoose.model('UserStats', userStatsSchema);
-
 class DatabaseService {
-    private static instance: DatabaseService;
-    private isConnected: boolean = false;
-
-    private constructor() {}
-
-    public static getInstance(): DatabaseService {
+    static instance;
+    isConnected = false;
+    constructor() { }
+    static getInstance() {
         if (!DatabaseService.instance) {
             DatabaseService.instance = new DatabaseService();
         }
         return DatabaseService.instance;
     }
-
     async connect() {
         if (!this.isConnected) {
             try {
-                await mongoose.connect(MONGODB_URI);
+                await mongoose.connect(MONGODB_URI, {
+                    // 添加连接选项
+                    serverSelectionTimeoutMS: 5000,
+                    socketTimeoutMS: 45000,
+                });
                 this.isConnected = true;
                 console.log('Successfully connected to MongoDB.');
-            } catch (error) {
+            }
+            catch (error) {
                 console.error('MongoDB connection error:', error);
                 throw error;
             }
         }
     }
-
-    async logChat(data: {
-        userId: string;
-        sessionId: string;
-        role: string;
-        messageType: 'user' | 'assistant';
-        inputMethod: 'auto' | 'manual';
-        message: string;
-        round: number;
-        metadata: {
-            responseTime: number;
-            tokensUsed: number;
-        };
-    }) {
+    async logChat(data) {
         try {
             const chatLog = new ChatLog(data);
             await chatLog.save();
-
             // 更新用户统计
             await this.updateUserStats(data.userId, data);
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Error logging chat:', error);
             throw error;
         }
     }
-
-    private async updateUserStats(userId: string, chatData: any) {
+    async updateUserStats(userId, chatData) {
         try {
             const stats = await UserStats.findOne({ userId }) || new UserStats({ userId });
-
             stats.totalMessages += 1;
             stats.lastActive = new Date();
-
             if (chatData.inputMethod === 'auto') {
                 stats.autoReplyUsage += 1;
-            } else {
+            }
+            else {
                 stats.manualInputUsage += 1;
             }
-
             // 更新角色偏好
             if (!stats.preferredRoles) {
                 stats.preferredRoles = new Map();
             }
             const currentCount = stats.preferredRoles.get(chatData.role) || 0;
             stats.preferredRoles.set(chatData.role, currentCount + 1);
-
             await stats.save();
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Error updating user stats:', error);
             throw error;
         }
     }
-
-    async getUserStats(userId: string) {
+    async getUserStats(userId) {
         try {
             return await UserStats.findOne({ userId });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Error getting user stats:', error);
             throw error;
         }
     }
-
-    async exportChatLogs(filters: any = {}) {
+    async exportChatLogs(filters = {}) {
         try {
             return await ChatLog.find(filters).sort({ timestamp: 1 });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Error exporting chat logs:', error);
             throw error;
         }
     }
 }
-
-export default DatabaseService; 
+export default DatabaseService;

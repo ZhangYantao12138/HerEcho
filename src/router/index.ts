@@ -56,7 +56,7 @@ const router = createRouter({
 })
 
 // 添加路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth) {
     // 这里可以添加身份验证逻辑
     // 例如检查用户是否是管理员

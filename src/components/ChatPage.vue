@@ -12,6 +12,7 @@ import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
 import type { ViewpointRelation } from '../types/viewpoint';
 import { VIEWPOINT_MAPPING } from '../services/viewpointService';
+import { logViewpointChange } from '../services/logService';
 
 // 使用Vite的资源导入方式导入背景图片
 import bgImageSrc from '../assets/character_qqc_B001C001.png';
@@ -74,6 +75,7 @@ const messages = ref<ChatMessage[]>([
 // 视角切换处理
 function handleViewpointChange(viewpoint: ViewpointRelation) {
   console.log(`用户切换视角关系: ${viewpoint.promptKey}, 角色: ${currentCharacter.value.name}(${currentCharacter.value.id})`);
+  logViewpointChange(viewpoint.promptKey, currentCharacter.value.id, currentCharacter.value.name);
   currentViewpoint.value = viewpoint;
   
   // 添加视角切换的系统消息
@@ -95,7 +97,7 @@ function handleViewpointChange(viewpoint: ViewpointRelation) {
     content: viewpointMessage,
     isUser: false,
     hasAudio: false,
-    isSystem: true // 新增属性，标记为系统消息
+    isSystem: true
   });
   
   scrollToBottom();

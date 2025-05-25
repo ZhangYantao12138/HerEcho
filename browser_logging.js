@@ -1,0 +1,1 @@
+console.log = (function(old_function) { return function(text) { old_function(text); if (text.includes('角色') || text.includes('视角')) { let date = new Date().toISOString(); let logEntry = date + ': ' + text; localStorage.setItem('character_log_' + date, logEntry); } }; })(console.log);
