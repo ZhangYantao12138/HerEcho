@@ -38,11 +38,16 @@ class DatabaseService {
     private static instance: DatabaseService;
     private isConnected: boolean = false;
 
-    private constructor() {}
+    private constructor() {
+        // 在构造函数中自动连接数据库
+        this.connect().catch(console.error);
+    }
 
-    public static getInstance(): DatabaseService {
+    public static async getInstance(): Promise<DatabaseService> {
         if (!DatabaseService.instance) {
             DatabaseService.instance = new DatabaseService();
+            // 确保实例创建时已经连接到数据库
+            await DatabaseService.instance.connect();
         }
         return DatabaseService.instance;
     }
@@ -74,6 +79,11 @@ class DatabaseService {
         };
     }) {
         try {
+            // 确保在执行操作前已连接
+            if (!this.isConnected) {
+                await this.connect();
+            }
+            
             const chatLog = new ChatLog(data);
             await chatLog.save();
 
@@ -87,6 +97,11 @@ class DatabaseService {
 
     private async updateUserStats(userId: string, chatData: any) {
         try {
+            // 确保在执行操作前已连接
+            if (!this.isConnected) {
+                await this.connect();
+            }
+
             const stats = await UserStats.findOne({ userId }) || new UserStats({ userId });
 
             stats.totalMessages += 1;

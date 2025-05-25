@@ -5,9 +5,6 @@ import type { Character } from '../types/character';
 import type { Message } from '../types/chat';
 import DatabaseService from './dbService';
 
-// 初始化数据库服务
-const dbService = DatabaseService.getInstance();
-
 // 从环境变量获取API密钥
 const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
 // API端点配置
@@ -39,6 +36,15 @@ let lastFallbackIndex: number = -1;
 
 // 用于记录角色使用统计
 const characterUsageStats: Record<string, number> = {};
+
+let dbServiceInstance: DatabaseService | null = null;
+
+async function getDbService(): Promise<DatabaseService> {
+    if (!dbServiceInstance) {
+        dbServiceInstance = await DatabaseService.getInstance();
+    }
+    return dbServiceInstance;
+}
 
 /**
  * 设置当前角色
@@ -121,30 +127,47 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
 
 /**
  * 获取回退回复
- * @returns 回退回复文本
  */
-function getFallbackResponse(): string {
-    const fallbackResponses = currentCharacter.fallbackReplies && currentCharacter.fallbackReplies.length > 0
-        ? currentCharacter.fallbackReplies
-        : [
-            `(${currentCharacter.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
-            `(${currentCharacter.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
-            `(${currentCharacter.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
-            `(${currentCharacter.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
-        ];
+function getFallbackResponse(character: Character): string {
+    const fallbackResponses = character.fallbackReplies || [
+        `(${character.name}似乎有些恍惚，轻轻叹了口气) 抱歉，我需要一点时间整理思绪...`,
+        `(${character.name}微微皱眉，露出思考的表情) 连接似乎出了些问题，让我们稍后再继续吧。`,
+        `(${character.name}的目光有些迷离) 我暂时无法回应，请给我一点时间...`,
+        `(${character.name}轻轻整理着衣袖) 我的思绪有些混乱，能稍等片刻吗？`
+    ];
 
-    // 智能选择回退回复，避免连续使用相同的回复
-    let newIndex;
-    if (fallbackResponses.length > 1) {
-        do {
-            newIndex = Math.floor(Math.random() * fallbackResponses.length);
-        } while (newIndex === lastFallbackIndex);
-        lastFallbackIndex = newIndex;
-    } else {
-        newIndex = 0;
+    if (!fallbackResponses || fallbackResponses.length === 0) {
+        return '(抱歉，我现在无法正常回复。请稍后再试。)';
     }
 
-    return fallbackResponses[newIndex];
+    // 避免连续使用相同的回退回复
+    let index = Math.floor(Math.random() * fallbackResponses.length);
+    while (fallbackResponses.length > 1 && index === lastFallbackIndex) {
+        index = Math.floor(Math.random() * fallbackResponses.length);
+    }
+    lastFallbackIndex = index;
+    return fallbackResponses[index];
+}
+
+/**
+ * 记录聊天消息到数据库
+ */
+async function logChatMessage(character: Character, message: string, messageType: 'user' | 'assistant', inputMethod: 'auto' | 'manual', metadata: { responseTime: number; tokensUsed: number }) {
+    try {
+        const dbService = await getDbService();
+        await dbService.logChat({
+            userId: 'user-' + Date.now(),
+            sessionId: 'session-' + Date.now(),
+            role: character.name,
+            messageType,
+            inputMethod,
+            message,
+            round: chatHistory.length,
+            metadata
+        });
+    } catch (error) {
+        console.error('记录聊天消息失败:', error);
+    }
 }
 
 /**
@@ -154,29 +177,20 @@ function getFallbackResponse(): string {
  * @returns 角色回复
  */
 export async function generateCharacterReply(characterId: string, message: string, retryCount = 0): Promise<string> {
-    try {
-        const character = getCharacterById(characterId);
-        if (!character) {
-            throw new Error(`Character not found: ${characterId}`);
-        }
+    const character = getCharacterById(characterId);
+    if (!character) {
+        throw new Error(`Character not found: ${characterId}`);
+    }
 
+    try {
         // 记录当前角色交互次数
         if (retryCount === 0) {
             console.log(`用户与 ${character.name}(${characterId}) 进行了对话`);
 
             // 记录用户消息到数据库
-            await dbService.logChat({
-                userId: 'user-' + Date.now(), // 这里可以根据实际用户系统修改
-                sessionId: 'session-' + Date.now(),
-                role: character.name,
-                messageType: 'user',
-                inputMethod: 'manual',
-                message: message,
-                round: chatHistory.length,
-                metadata: {
-                    responseTime: 0,
-                    tokensUsed: 0
-                }
+            await logChatMessage(character, message, 'user', 'manual', {
+                responseTime: 0,
+                tokensUsed: 0
             });
         }
 
@@ -210,18 +224,9 @@ export async function generateCharacterReply(characterId: string, message: strin
         const responseTime = Date.now() - startTime;
 
         // 记录AI回复到数据库
-        await dbService.logChat({
-            userId: 'user-' + Date.now(),
-            sessionId: 'session-' + Date.now(),
-            role: character.name,
-            messageType: 'assistant',
-            inputMethod: 'auto',
-            message: aiResponse,
-            round: chatHistory.length,
-            metadata: {
-                responseTime: responseTime,
-                tokensUsed: Math.ceil(aiResponse.length / 4) // 粗略估计token使用量
-            }
+        await logChatMessage(character, aiResponse, 'assistant', 'auto', {
+            responseTime,
+            tokensUsed: Math.ceil(aiResponse.length / 4)
         });
 
         // 添加回复到历史记录
@@ -231,43 +236,35 @@ export async function generateCharacterReply(characterId: string, message: strin
         });
 
         return aiResponse;
-    } catch (error) {
-        console.error(`调用DeepSeek API失败 (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, error);
 
-        // 特殊处理API密钥相关错误
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.includes('API密钥未设置') || errorMessage.includes('Authorization') || !apiKey) {
+    } catch (error: unknown) {
+        console.error('调用DeepSeek API失败 (尝试 ' + (retryCount + 1) + '/' + (MAX_RETRY_ATTEMPTS + 1) + '):', error);
+        
+        if (error instanceof Error && (error.message.includes('API密钥错误') || error.message.includes('API key'))) {
             console.error('===== API密钥错误 =====');
             console.error('请确保已在.env文件中设置有效的VITE_DEEPSEEK_API_KEY');
             console.error('查看API_SETUP.md文件获取详细设置指南');
-            return '(系统消息: DeepSeek API密钥未设置或无效。请参考API_SETUP.md文件设置API密钥。)';
-        }
-
-        // 如果还有重试次数，则进行重试
-        if (retryCount < MAX_RETRY_ATTEMPTS) {
-            console.log(`${RETRY_DELAY / 1000}秒后进行第${retryCount + 2}次尝试...`);
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(generateCharacterReply(characterId, message, retryCount + 1));
-                }, RETRY_DELAY);
-            });
-        }
-
-        // 所有重试都失败，使用回退回复
-        if (systemPromptConfig.fallbackSettings.useDefaultFallback) {
-            const fallbackResponse = getFallbackResponse();
-
-            // 将回退回复也添加到聊天历史中，以保持连贯性
-            chatHistory.push({
-                role: 'assistant',
-                content: fallbackResponse
-            });
-
-            return fallbackResponse;
-        } else {
-            // 如果禁用默认回退，则向上抛出错误
             throw error;
         }
+
+        // 如果是重试次数未超过限制，则重试
+        if (retryCount < MAX_RETRY_ATTEMPTS) {
+            console.log(`等待 ${RETRY_DELAY}ms 后重试...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return generateCharacterReply(characterId, message, retryCount + 1);
+        }
+
+        // 如果重试次数已达上限，使用回退回复
+        console.log('重试次数已达上限，使用回退回复');
+        const fallbackResponse = getFallbackResponse(character);
+        
+        // 记录回退回复到数据库
+        await logChatMessage(character, fallbackResponse, 'assistant', 'auto', {
+            responseTime: 0,
+            tokensUsed: 0
+        });
+
+        return fallbackResponse;
     }
 }
 
@@ -340,18 +337,9 @@ export async function generateAutoReplies(characterId: string, message: string):
         const autoReplies = response.split('|').map(option => option.trim());
 
         // 记录自动回复选项到数据库
-        await dbService.logChat({
-            userId: 'user-' + Date.now(),
-            sessionId: 'session-' + Date.now(),
-            role: character.name,
-            messageType: 'assistant',
-            inputMethod: 'auto',
-            message: JSON.stringify(autoReplies),
-            round: chatHistory.length,
-            metadata: {
-                responseTime: 0,
-                tokensUsed: 0
-            }
+        await logChatMessage(character, JSON.stringify(autoReplies), 'assistant', 'auto', {
+            responseTime: 0,
+            tokensUsed: 0
         });
 
         return autoReplies;

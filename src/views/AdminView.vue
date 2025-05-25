@@ -58,7 +58,6 @@
 import { ref, computed, onMounted } from 'vue';
 import DatabaseService from '../services/dbService';
 
-const dbService = DatabaseService.getInstance();
 const userStats = ref<any>(null);
 const startDate = ref('');
 const endDate = ref('');
@@ -70,6 +69,8 @@ const maxRoleCount = computed(() => {
 
 onMounted(async () => {
   try {
+    // 获取数据库服务实例
+    const dbService = await DatabaseService.getInstance();
     // 获取所有用户的统计数据
     userStats.value = await dbService.getUserStats('all');
   } catch (error) {
@@ -86,6 +87,8 @@ async function exportData() {
       }
     };
     
+    // 获取数据库服务实例
+    const dbService = await DatabaseService.getInstance();
     const logs = await dbService.exportChatLogs(filters);
     const blob = new Blob([JSON.stringify(logs, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
