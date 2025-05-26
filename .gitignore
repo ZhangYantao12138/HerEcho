@@ -26,3 +26,7 @@ dist-ssr
 # Environment variables
 .env
 ISSUES.md
+
+# Vue compiled output
+src/**/*.vue.js
+src/**/*.vue.d.ts
