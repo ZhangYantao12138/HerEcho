@@ -8,6 +8,7 @@ import BottomNav from './BottomNav.vue';
 import { clearChatHistory, generateCharacterReply, setCurrentCharacter, generatePlayerReply } from '../services/chatService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
+import type { AIModel } from '../types/chat';
 import { VIEWPOINT_MAPPING } from '../config/viewpointConfig';
 
 // 获取路由参数
@@ -192,6 +193,10 @@ function cancelClear() {
   showClearConfirm.value = false;
 }
 
+function handleModelChange(model: AIModel) {
+  console.log(`模型已切换到: ${model}`);
+}
+
 async function testApiConnection() {
   try {
     const testMessage = "测试消息，请简短回复";
@@ -239,6 +244,7 @@ onMounted(() => {
       <ChatHeader 
         :currentCharacter="currentCharacter"
         @test-api="testApiConnection"
+        @model-changed="handleModelChange"
       />
       
       <!-- 情节信息区域 -->

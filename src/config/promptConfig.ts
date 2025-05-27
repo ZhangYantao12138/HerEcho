@@ -3,6 +3,30 @@
  * 提供系统级别的prompt模板和配置项
  */
 
+import { AIModel, type ModelConfig } from '../types/chat';
+
+// 支持的AI模型配置
+export const modelConfigs: Record<AIModel, ModelConfig> = {
+  [AIModel.DEEPSEEK]: {
+    id: AIModel.DEEPSEEK,
+    name: 'DeepSeek',
+    description: '深度求索AI模型',
+    endpoint: 'https://api.deepseek.com/v1/chat/completions',
+    apiKeyEnvVar: 'VITE_DEEPSEEK_API_KEY',
+    maxTokens: 800,
+    defaultTemperature: 0.9
+  },
+  [AIModel.GEMINI]: {
+    id: AIModel.GEMINI,
+    name: 'Gemini',
+    description: 'Google Gemini AI模型',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
+    apiKeyEnvVar: 'VITE_GEMINI_API_KEY',
+    maxTokens: 800,
+    defaultTemperature: 0.9
+  }
+};
+
 // 角色回复prompt配置
 export const characterPromptConfig = {
   // 基础模板 - 基本结构，可以被平台全局修改
