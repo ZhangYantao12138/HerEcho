@@ -1,6 +1,6 @@
 # HerEcho 项目修改记录
 
-## 2025-05-27 Russo feat：加入Gemini和模型切换功能
+## 2025-05-27 Russo feat：加入Gemini和模型切换功能；删去不必要的编译产物
 
 ### 1. 新增Gemini AI模型支持
 - 集成Google Gemini 1.5 Flash模型
