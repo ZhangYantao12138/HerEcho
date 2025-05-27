@@ -12,8 +12,11 @@ import {
   getAvailableViewpoints,
   getCurrentViewpoint
 } from '../services/viewpointService';
+import { setCurrentModel } from '../services/chatService';
 import ViewpointSelector from './ViewpointSelector.vue';
+import ModelSelector from './ModelSelector.vue';
 import type { ViewpointRelation } from '../types/viewpoint';
+import type { AIModel } from '../types/chat';
 
 const router = useRouter();
 const route = useRoute();
@@ -22,7 +25,7 @@ const props = defineProps<{
   currentCharacter: Character
 }>();
 
-const emit = defineEmits(['testApi', 'change-viewpoint']);
+const emit = defineEmits(['testApi', 'change-viewpoint', 'model-changed']);
 
 const showCharacterList = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
@@ -88,6 +91,12 @@ function handleTestApi() {
   emit('testApi');
 }
 
+// 处理模型切换
+function handleModelSelect(model: AIModel) {
+  setCurrentModel(model);
+  emit('model-changed', model);
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
 });
@@ -136,6 +145,11 @@ onUnmounted(() => {
     </div>
 
     <div class="header-actions">
+      <ModelSelector
+        @select-model="handleModelSelect"
+        class="model-selector-container"
+      />
+
       <ViewpointSelector
         v-if="availableViewpoints.length > 0"
         :characterId="props.currentCharacter.id"
@@ -288,6 +302,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 15px;
+}
+
+.model-selector-container {
+  margin-right: 10px;
 }
 
 .viewpoint-selector-container {

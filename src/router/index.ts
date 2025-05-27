@@ -8,6 +8,7 @@ const router = createRouter({
       path: '/',
       redirect: '/chat'
     },
+
     {
       path: '/dream',
       name: 'dream',
@@ -28,6 +29,12 @@ const router = createRouter({
       path: '/chat/:scriptId/:characterId',
       name: 'chatWithScript',
       component: CharacterChatPage,
+      props: true
+    },
+    {
+      path: '/custom-chat/:sessionId',
+      name: 'customCharacterChat',
+      component: () => import('../components/CustomCharacterChatPage.vue'),
       props: true
     },
     {

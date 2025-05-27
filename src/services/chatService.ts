@@ -1,14 +1,30 @@
 import { getCharacterById, getDefaultCharacter } from '../config/characters';
 import { generatePlayerPrompt, generateAutoReplyPrompt } from './promptService';
-import { systemPromptConfig } from '../config/promptConfig';
+import { systemPromptConfig, modelConfigs } from '../config/promptConfig';
 import type { Character } from '../types/character';
 import type { Message } from '../types/chat';
+import { AIModel } from '../types/chat';
 import DatabaseService from './dbService';
 
-// 从环境变量获取API密钥
-const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
-// API端点配置
-const apiUrl = 'https://api.deepseek.com/v1/chat/completions';
+// 当前选择的模型
+let currentModel: AIModel = AIModel.DEEPSEEK;
+
+/**
+ * 设置当前使用的AI模型
+ * @param model AI模型类型
+ */
+export function setCurrentModel(model: AIModel): void {
+    currentModel = model;
+    console.log(`切换到模型: ${modelConfigs[model].name}`);
+}
+
+/**
+ * 获取当前使用的AI模型
+ * @returns 当前模型类型
+ */
+export function getCurrentModel(): AIModel {
+    return currentModel;
+}
 
 // 保存对话历史
 interface ChatMessage {
@@ -63,26 +79,28 @@ export function setCurrentCharacter(character: Character): void {
 }
 
 /**
- * 执行API请求
+ * 执行DeepSeek API请求
  * @param messages 消息数组
  * @param temperature 温度参数
  * @returns API响应
  */
 async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
+    const config = modelConfigs[AIModel.DEEPSEEK];
+    const apiKey = import.meta.env[config.apiKeyEnvVar];
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
-        console.log(`发送请求到DeepSeek API: ${apiUrl}`);
+        console.log(`发送请求到DeepSeek API: ${config.endpoint}`);
 
         // 检查API密钥是否存在
         if (!apiKey) {
-            throw new Error('DeepSeek API密钥未设置。请在.env文件中添加VITE_DEEPSEEK_API_KEY');
+            throw new Error(`${config.name} API密钥未设置。请在.env文件中添加${config.apiKeyEnvVar}`);
         }
 
         console.log(`使用的API Key: ${apiKey.substring(0, 5)}...`);
 
-        const response = await fetch(apiUrl, {
+        const response = await fetch(config.endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -92,7 +110,7 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
                 model: systemPromptConfig.globalAISettings.model,
                 messages: messages,
                 temperature: temperature,
-                max_tokens: systemPromptConfig.charLimits.responseMax,
+                max_tokens: config.maxTokens,
                 top_p: systemPromptConfig.globalAISettings.topP,
                 stream: false,
                 no_think: true
@@ -114,7 +132,7 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
                 errorMessage = errorText || errorMessage;
             }
 
-            throw new Error(`DeepSeek API错误: ${errorMessage}`);
+            throw new Error(`${config.name} API错误: ${errorMessage}`);
         }
 
         const data = await response.json();
@@ -122,6 +140,98 @@ async function callDeepSeekAPI(messages: ChatMessage[], temperature = systemProm
     } catch (error) {
         clearTimeout(timeoutId);
         throw error;
+    }
+}
+
+/**
+ * 执行Gemini API请求
+ * @param messages 消息数组
+ * @param temperature 温度参数
+ * @returns API响应
+ */
+async function callGeminiAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
+    const config = modelConfigs[AIModel.GEMINI];
+    const apiKey = import.meta.env[config.apiKeyEnvVar];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+    try {
+        console.log(`发送请求到Gemini API: ${config.endpoint}`);
+
+        // 检查API密钥是否存在
+        if (!apiKey) {
+            throw new Error(`${config.name} API密钥未设置。请在.env文件中添加${config.apiKeyEnvVar}`);
+        }
+
+        console.log(`使用的API Key: ${apiKey.substring(0, 5)}...`);
+
+        // 转换消息格式为Gemini格式
+        const geminiMessages = messages.filter(msg => msg.role !== 'system').map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+        }));
+
+        // 添加系统消息到第一条用户消息中
+        const systemMessage = messages.find(msg => msg.role === 'system');
+        if (systemMessage && geminiMessages.length > 0 && geminiMessages[0].role === 'user') {
+            geminiMessages[0].parts[0].text = systemMessage.content + '\n\n' + geminiMessages[0].parts[0].text;
+        }
+
+        const response = await fetch(`${config.endpoint}?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                contents: geminiMessages,
+                generationConfig: {
+                    temperature: temperature,
+                    maxOutputTokens: config.maxTokens,
+                    topP: systemPromptConfig.globalAISettings.topP
+                }
+            }),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API响应错误:', response.status, errorText);
+            let errorMessage = `API错误 (${response.status})`;
+
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error?.message || errorMessage;
+            } catch (e) {
+                errorMessage = errorText || errorMessage;
+            }
+
+            throw new Error(`${config.name} API错误: ${errorMessage}`);
+        }
+
+        const data = await response.json();
+        return data.candidates[0].content.parts[0].text;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+    }
+}
+
+/**
+ * 执行通用API请求，根据当前选择的模型调用相应的API
+ * @param messages 消息数组
+ * @param temperature 温度参数
+ * @returns API响应
+ */
+async function callAIAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
+    switch (currentModel) {
+        case AIModel.DEEPSEEK:
+            return callDeepSeekAPI(messages, temperature);
+        case AIModel.GEMINI:
+            return callGeminiAPI(messages, temperature);
+        default:
+            throw new Error(`不支持的模型类型: ${currentModel}`);
     }
 }
 
@@ -220,7 +330,7 @@ export async function generateCharacterReply(characterId: string, message: strin
 
         // 调用API
         const startTime = Date.now();
-        const aiResponse = await callDeepSeekAPI(chatHistory);
+        const aiResponse = await callAIAPI(chatHistory);
         const responseTime = Date.now() - startTime;
 
         // 记录AI回复到数据库
@@ -239,7 +349,7 @@ export async function generateCharacterReply(characterId: string, message: strin
 
     } catch (error: unknown) {
         console.error('调用DeepSeek API失败 (尝试 ' + (retryCount + 1) + '/' + (MAX_RETRY_ATTEMPTS + 1) + '):', error);
-        
+
         if (error instanceof Error && (error.message.includes('API密钥错误') || error.message.includes('API key'))) {
             console.error('===== API密钥错误 =====');
             console.error('请确保已在.env文件中设置有效的VITE_DEEPSEEK_API_KEY');
@@ -257,7 +367,7 @@ export async function generateCharacterReply(characterId: string, message: strin
         // 如果重试次数已达上限，使用回退回复
         console.log('重试次数已达上限，使用回退回复');
         const fallbackResponse = getFallbackResponse(character);
-        
+
         // 记录回退回复到数据库
         await logChatMessage(character, fallbackResponse, 'assistant', 'auto', {
             responseTime: 0,
@@ -289,7 +399,7 @@ export async function generatePlayerReply(characterId: string, message: string):
     ];
 
     try {
-        return await callDeepSeekAPI(messages);
+        return await callAIAPI(messages);
     } catch (error) {
         console.error('生成玩家回复失败:', error);
         return '(轻轻叹息) 抱歉，我现在无法回应...';
@@ -317,7 +427,7 @@ export async function generateAutoReplies(characterId: string, message: string):
     ];
 
     try {
-        const response = await callDeepSeekAPI(messages, systemPromptConfig.globalAISettings.defaultTemp + 0.1);
+        const response = await callAIAPI(messages, systemPromptConfig.globalAISettings.defaultTemp + 0.1);
 
         // 确保返回的是有效的选项字符串
         if (!response.includes('|')) {

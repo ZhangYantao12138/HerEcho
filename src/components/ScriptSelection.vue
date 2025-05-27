@@ -3,14 +3,20 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ScriptCard from './ScriptCard.vue';
 import ScriptDetailsModal from './ScriptDetailsModal.vue';
+import CustomCharacterCard from './CustomCharacterCard.vue';
+import CustomCharacterModal from './CustomCharacterModal.vue';
 import { scripts } from '../config/scripts';
 import type { Script } from '../types/script';
+import { customCharacterService } from '../services/customCharacterService';
 
 const router = useRouter();
 
 // 显示剧本详情弹窗
 const showScriptDetails = ref(false);
 const selectedScript = ref<Script | null>(null);
+
+// 显示自建角色弹窗
+const showCustomCharacterModal = ref(false);
 
 // 进入剧本
 function enterScript(script: Script) {
@@ -46,6 +52,28 @@ function showLockedMessage(script: Script) {
 function closeDetails() {
   showScriptDetails.value = false;
 }
+
+// 打开自建角色弹窗
+function openCustomCharacterModal() {
+  showCustomCharacterModal.value = true;
+}
+
+// 关闭自建角色弹窗
+function closeCustomCharacterModal() {
+  showCustomCharacterModal.value = false;
+}
+
+// 开始自建角色对话
+function startCustomCharacterChat(data: { characterName: string, characterSetting: string }) {
+  try {
+    const sessionId = customCharacterService.createSession(data.characterName, data.characterSetting);
+    router.push(`/custom-chat/${sessionId}`);
+    showCustomCharacterModal.value = false;
+  } catch (error) {
+    console.error('创建自建角色会话失败:', error);
+    alert('创建角色失败，请重试');
+  }
+}
 </script>
 
 <template>
@@ -57,6 +85,10 @@ function closeDetails() {
     
     <!-- 剧本卡片列表 -->
     <div class="script-list-container">
+      <!-- 自建角色卡片 -->
+      <CustomCharacterCard @click="openCustomCharacterModal" />
+      
+      <!-- 剧本卡片 -->
       <ScriptCard
         v-for="script in scripts"
         :key="script.id"
@@ -72,6 +104,13 @@ function closeDetails() {
       @close="closeDetails"
       @start="startChat"
       @continue="continueChat"
+    />
+    
+    <!-- 自建角色弹窗 -->
+    <CustomCharacterModal
+      :show="showCustomCharacterModal"
+      @close="closeCustomCharacterModal"
+      @start="startCustomCharacterChat"
     />
   </div>
 </template>

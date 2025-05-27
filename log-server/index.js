@@ -65,7 +65,7 @@ app.get('/logs', authenticateApiKey, async (req, res) => {
         const skip = (page - 1) * limit;
 
         const query = {};
-        
+
         // 添加过滤条件
         if (req.query.characterId) {
             query.characterId = req.query.characterId;
@@ -108,18 +108,22 @@ app.get('/stats', authenticateApiKey, async (req, res) => {
         const [characterStats, viewpointStats] = await Promise.all([
             db.collection('logs').aggregate([
                 { $match: { type: 'character_interaction' } },
-                { $group: {
-                    _id: '$characterId',
-                    characterName: { $first: '$characterName' },
-                    count: { $sum: 1 }
-                }}
+                {
+                    $group: {
+                        _id: '$characterId',
+                        characterName: { $first: '$characterName' },
+                        count: { $sum: 1 }
+                    }
+                }
             ]).toArray(),
             db.collection('logs').aggregate([
                 { $match: { type: 'viewpoint_change' } },
-                { $group: {
-                    _id: '$viewpointKey',
-                    count: { $sum: 1 }
-                }}
+                {
+                    $group: {
+                        _id: '$viewpointKey',
+                        count: { $sum: 1 }
+                    }
+                }
             ]).toArray()
         ]);
 

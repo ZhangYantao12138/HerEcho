@@ -27,6 +27,22 @@ dist-ssr
 .env
 ISSUES.md
 
-# Vue compiled output
+# Documentation files
+docs/
+
+# Compiled output
 src/**/*.vue.js
 src/**/*.vue.d.ts
+src/**/*.js
+src/**/*.d.ts
+*.tsbuildinfo
+
+# Exclude necessary source files
+!src/**/*.config.js
+!src/**/*.config.d.ts
+!src/**/*.ts
+!src/**/*.vue
+
+# Source maps and build artifacts
+*.js.map
+*.css.map
