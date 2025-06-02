@@ -1,34 +1,30 @@
 {
-  "name": "friends.ai",
-  "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc -b && vite build",
-    "preview": "vite preview",
-    "deploy": "pnpm build && cp public/404.html dist/ && cp public/.nojekyll dist/ && gh-pages -d dist",
-    "deploy:zeabur": "pnpm build"
-  },
-  "dependencies": {
-    "@iconify/vue": "^5.0.0",
-    "@remixicon/vue": "^4.6.0",
-    "axios": "^1.9.0",
-    "pinia": "^3.0.2",
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.1"
-  },
-  "devDependencies": {
-    "@tsconfig/node18": "^18.2.4",
-    "@types/node": "^22.15.21",
-    "@vitejs/plugin-vue": "^5.2.3",
-    "@vue/tsconfig": "^0.7.0",
-    "gh-pages": "^6.3.0",
-    "mongodb": "^6.16.0",
-    "mongoose": "^8.15.0",
-    "typescript": "~5.8.3",
-    "undici-types": "^7.10.0",
-    "vite": "^6.3.5",
-    "vue-tsc": "^2.2.8"
-  }
+    "name": "herecho",
+    "version": "1.0.0",
+    "description": "HerEcho - AI角色扮演对话系统",
+    "scripts": {
+        "install:all": "npm install",
+        "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+        "dev:frontend": "cd frontend && npm run dev",
+        "dev:backend": "cd backend && npm run dev",
+        "build": "npm run build:frontend && npm run build:backend",
+        "build:frontend": "cd frontend && npm run build",
+        "build:backend": "cd backend && npm run build",
+        "test": "npm run test:frontend && npm run test:backend",
+        "test:frontend": "cd frontend && npm run test",
+        "test:backend": "cd backend && npm run test",
+        "test:db": "cd backend && npm run test:db"
+    },
+    "dependencies": {
+        "dotenv": "^16.3.1",
+        "typeorm": "^0.3.17",
+        "mysql2": "^3.6.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.8.2",
+        "concurrently": "^8.2.2",
+        "ts-node": "^10.9.1",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.2.2"
+    }
 }

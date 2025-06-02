@@ -27,8 +27,6 @@ dist-ssr
 # .env  # 注释掉这行，这样 .env 文件就不会被忽略
 ISSUES.md
 
-# Documentation files
-docs/
 
 # Compiled output
 src/**/*.vue.js
@@ -46,3 +44,6 @@ src/**/*.d.ts
 # Source maps and build artifacts
 *.js.map
 *.css.map
+
+# Cursor rules
+.cursor/rules/
