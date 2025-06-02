@@ -115,7 +115,11 @@ watch(() => currentCharacter.value, () => {
 async function handleAIResponse(response: string) {
   if (isGenerating.value) {
     // 如果是流式响应，直接更新当前消息
-    currentStreamingMessage.value += response;
+    currentStreamingMessage.value = response;
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage) {
+      lastMessage.content = response;
+    }
   } else {
     // 如果是完整响应，添加到消息列表
     messages.value.push({
@@ -131,6 +135,8 @@ async function handleAIResponse(response: string) {
 }
 
 // 修改sendMessage函数
+const emit = defineEmits(['stream-complete']);
+
 async function sendMessage(text: string) {
   // 添加用户消息
   addUserMessage(text);
@@ -180,7 +186,7 @@ async function sendMessage(text: string) {
 }
 
 function selectOption(option: string) {
-  addUserMessage(option);
+  sendMessage(option);
 }
 
 function handleVoiceMessage(duration: number) {
@@ -298,7 +304,9 @@ onMounted(() => {
     
     <div class="content-wrapper">
       <ChatHeader 
-        :currentCharacter="currentCharacter"
+        :current-character="currentCharacter"
+        :is-collapsed="isCollapsed"
+        @toggle-collapse="toggleCollapse"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
       />
@@ -363,6 +371,7 @@ onMounted(() => {
           :currentCharacter="currentCharacter"
           :lastUserMessage="messages.length > 0 ? messages.filter(m => m.isUser).slice(-1)[0] || undefined : undefined"
           :lastCharacterMessage="messages.length > 0 ? messages.filter(m => !m.isUser).slice(-1)[0] || undefined : undefined"
+          :is-streaming="isGenerating"
         />
       </div>
       

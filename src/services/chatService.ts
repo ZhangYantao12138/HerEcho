@@ -523,15 +523,20 @@ export async function generatePlayerReply(characterId: string, message: string):
  * 生成自动回复选项
  * @param characterId 角色ID
  * @param message 角色消息
+ * @param chatHistory 对话历史
  * @returns 自动回复选项列表
  */
-export async function generateAutoReplies(characterId: string, message: string): Promise<string[]> {
+export async function generateAutoReplies(
+    characterId: string,
+    message: string,
+    chatHistory: Message[] = []
+): Promise<string[]> {
     const character = getCharacterById(characterId);
     if (!character) {
         throw new Error(`Character not found: ${characterId}`);
     }
 
-    const prompt = generateAutoReplyPrompt(character, message);
+    const prompt = generateAutoReplyPrompt(character, message, chatHistory);
     const messages: ChatMessage[] = [
         {
             role: 'system',
