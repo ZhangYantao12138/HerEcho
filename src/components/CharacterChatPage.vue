@@ -53,6 +53,10 @@ const isCollapsed = ref(false);
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
 
+// 添加新的响应式变量
+const isGenerating = ref(false);
+const currentStreamingMessage = ref('');
+
 // 监听路由参数变化
 watch(() => route.params, async (newParams) => {
   const newCharacterId = newParams.characterId as string;
@@ -107,24 +111,76 @@ watch(() => currentCharacter.value, () => {
   clearChatHistory();
 }, { deep: true });
 
-function sendMessage(text: string) {
+// 修改handleAIResponse函数
+async function handleAIResponse(response: string) {
+  if (isGenerating.value) {
+    // 如果是流式响应，直接更新当前消息
+    currentStreamingMessage.value += response;
+  } else {
+    // 如果是完整响应，添加到消息列表
+    messages.value.push({
+      id: Date.now(),
+      content: response,
+      isUser: false,
+      hasAudio: true
+    });
+  }
+  
+  updateProgress();
+  scrollToBottom();
+}
+
+// 修改sendMessage函数
+async function sendMessage(text: string) {
+  // 添加用户消息
   addUserMessage(text);
+  
+  // 添加加载动画消息
+  const loadingMessageId = Date.now();
+  messages.value.push({
+    id: loadingMessageId,
+    content: '<div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>',
+    isUser: false,
+    hasAudio: false
+  });
+  
+  isGenerating.value = true;
+  currentStreamingMessage.value = '';
+  
+  try {
+    await generateCharacterReply(
+      currentCharacter.value.id,
+      text,
+      (chunk) => {
+        currentStreamingMessage.value += chunk;
+        const lastMessage = messages.value[messages.value.length - 1];
+        if (lastMessage) {
+          lastMessage.content = currentStreamingMessage.value;
+        }
+      }
+    );
+  } catch (error) {
+    console.error('获取AI回复失败:', error);
+    // 移除加载消息
+    messages.value = messages.value.filter(msg => msg.id !== loadingMessageId);
+    // 添加错误消息
+    messages.value.push({
+      id: Date.now(),
+      content: `(${currentCharacter.value.name}轻轻叹息) 我们的连接似乎出了些问题，能稍后再谈吗？`,
+      isUser: false,
+      hasAudio: true
+    });
+  } finally {
+    isGenerating.value = false;
+    currentStreamingMessage.value = '';
+  }
+  
+  updateProgress();
+  scrollToBottom();
 }
 
 function selectOption(option: string) {
   addUserMessage(option);
-}
-
-function handleAIResponse(response: string) {
-  messages.value.push({
-    id: Date.now(),
-    content: response,
-    isUser: false,
-    hasAudio: true
-  });
-  
-  updateProgress();
-  scrollToBottom();
 }
 
 function handleVoiceMessage(duration: number) {
@@ -645,5 +701,35 @@ onMounted(() => {
 /* 滚动条 */
 .chat-container::-webkit-scrollbar {
   width: 0px;
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+}
+
+.loading-dots span {
+  animation: loading 1.4s infinite ease-in-out both;
+  font-size: 24px;
+  line-height: 1;
+  margin: 0 2px;
+}
+
+.loading-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes loading {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 
+  40% { 
+    transform: scale(1.0);
+  }
 }
 </style> 
