@@ -8,6 +8,7 @@ import {
   RiLoader4Line 
 } from '@remixicon/vue';
 import { generateCharacterReply, generateAutoReplies } from '../services/chatService';
+import type { Message } from '../types/chat';
 
 const props = defineProps({
   isCollapsed: {
@@ -19,12 +20,16 @@ const props = defineProps({
     required: true
   },
   lastUserMessage: {
-    type: Object,
+    type: Object as () => Message | undefined,
     default: undefined
   },
   lastCharacterMessage: {
-    type: Object,
+    type: Object as () => Message | undefined,
     default: undefined
+  },
+  isStreaming: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -43,7 +48,7 @@ const emit = defineEmits(['send-message', 'select-option', 'send-voice', 'ai-res
 // 根据角色ID动态生成选项
 const options = ref<string[]>([]);
 const autoReplyOptions = ref<string[]>([]);
-const isGeneratingAutoReply = ref(false);
+const isGenerating = ref(false);
 
 // 错误类型映射
 const errorTypes = {
@@ -118,10 +123,20 @@ function handleClickOutside(event: MouseEvent) {
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
   updateDialogOptions();
+  window.addEventListener('stream-complete', async () => {
+    if (props.lastCharacterMessage) {
+      await generateAutoReplyOptions();
+    }
+  });
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
+  window.removeEventListener('stream-complete', async () => {
+    if (props.lastCharacterMessage) {
+      await generateAutoReplyOptions();
+    }
+  });
 });
 
 // 监听角色变化，更新选项并处理自动回复
@@ -142,29 +157,33 @@ watch(() => props.currentCharacter, async (newCharacter, oldCharacter) => {
   }
 }, { deep: true });
 
-// 监听最后一条角色消息变化
-watch(() => props.lastCharacterMessage, async (newMessage) => {
-  if (newMessage) {
+// 监听流式传输状态变化
+watch(() => props.isStreaming, async (isStreaming) => {
+  if (!isStreaming && props.lastCharacterMessage) {
     // 清空之前的自动回复选项
     autoReplyOptions.value = [];
     // 生成新的自动回复选项
     await generateAutoReplyOptions();
   }
-}, { deep: true });
+});
 
 // 生成自动回复选项
 async function generateAutoReplyOptions() {
-  if (!props.lastCharacterMessage || isGeneratingAutoReply.value) return;
+  if (!props.lastCharacterMessage || isGenerating.value) return;
   
   try {
-    isGeneratingAutoReply.value = true;
-    const options = await generateAutoReplies(props.currentCharacter.id, props.lastCharacterMessage.content);
+    isGenerating.value = true;
+    const options = await generateAutoReplies(
+      props.currentCharacter.id, 
+      props.lastCharacterMessage.content,
+      props.lastUserMessage ? [props.lastUserMessage, props.lastCharacterMessage] : [props.lastCharacterMessage]
+    );
     autoReplyOptions.value = options;
   } catch (error) {
     console.error('生成自动回复选项失败:', error);
     showErrorMessage('api');
   } finally {
-    isGeneratingAutoReply.value = false;
+    isGenerating.value = false;
   }
 }
 
@@ -188,20 +207,10 @@ async function selectOption(option: string) {
     userOption = `${userOption} ${characterName}...`;
   }
   
-  emit('select-option', userOption);
+  // 直接调用sendMessage函数
+  inputText.value = userOption;
+  await sendMessage();
   showOptions.value = false;
-  
-  // 调用AI服务获取回复
-  try {
-    isProcessing.value = true;
-    const aiResponse = await generateCharacterReply(props.currentCharacter.id, userOption);
-    emit('ai-response', aiResponse);
-  } catch (error) {
-    console.error('获取AI回复失败:', error);
-    emit('ai-response', `(${props.currentCharacter.name}轻轻叹息) 我们的连接似乎出了些问题，能稍后再谈吗？`);
-  } finally {
-    isProcessing.value = false;
-  }
 }
 
 async function sendMessage() {
@@ -211,38 +220,12 @@ async function sendMessage() {
     // 检查是否只有括号没有正文
     const bracketOnlyRegex = /^\([^)]*\)$/;
     if (bracketOnlyRegex.test(userMessage)) {
-      // 如果只有括号，添加一个默认的文本内容
       const characterName = props.currentCharacter?.name || '你';
       userMessage = `${userMessage} ${characterName}...`;
     }
     
     emit('send-message', userMessage);
     inputText.value = '';
-    
-    // 调用AI服务获取回复
-    try {
-      isProcessing.value = true;
-      const aiResponse = await generateCharacterReply(props.currentCharacter.id, userMessage);
-      emit('ai-response', aiResponse);
-    } catch (error: any) {
-      console.error('获取AI回复失败:', error);
-      
-      // 根据错误类型显示不同的错误提示
-      if (error.name === 'AbortError') {
-        showErrorMessage('timeout');
-      } else if (error.message?.includes('network')) {
-        showErrorMessage('network');
-      } else if (error.message?.includes('API')) {
-        showErrorMessage('api');
-      } else {
-        showErrorMessage('unknown');
-      }
-      
-      // 使用角色的fallback回复
-      emit('ai-response', `(${props.currentCharacter.name}神情恍惚) 抱歉，我需要整理一下思绪...`);
-    } finally {
-      isProcessing.value = false;
-    }
   }
 }
 
@@ -298,7 +281,7 @@ async function stopRecording() {
   <div class="input-container" ref="inputContainerRef">
     <!-- 选项面板 -->
     <div v-if="showOptions" class="options-panel">
-      <template v-if="isGeneratingAutoReply">
+      <template v-if="isGenerating">
         <div class="option-item loading">
           <RiLoader4Line class="loading-icon" />
           <span>正在生成回复选项...</span>
@@ -343,10 +326,10 @@ async function stopRecording() {
             @click.stop="toggleOptions" 
             :class="{ 
               'disabled': isProcessing,
-              'loading': isGeneratingAutoReply 
+              'loading': isGenerating 
             }"
           >
-            <RiLoader4Line v-if="isGeneratingAutoReply" class="loading-icon" />
+            <RiLoader4Line v-if="isGenerating" class="loading-icon" />
             <RiMessage2Line v-else />
           </div>
           <div class="add-button" @click="sendMessage" :class="{ 'disabled': isProcessing }">

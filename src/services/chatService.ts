@@ -219,19 +219,115 @@ async function callGeminiAPI(messages: ChatMessage[], temperature = systemPrompt
 }
 
 /**
- * 执行通用API请求，根据当前选择的模型调用相应的API
- * @param messages 消息数组
+ * 调用AI API
+ * @param messages 消息历史
  * @param temperature 温度参数
- * @returns API响应
+ * @param onStream 流式回调函数
+ * @returns AI回复
  */
-async function callAIAPI(messages: ChatMessage[], temperature = systemPromptConfig.globalAISettings.defaultTemp): Promise<string> {
-    switch (currentModel) {
-        case AIModel.DEEPSEEK:
-            return callDeepSeekAPI(messages, temperature);
-        case AIModel.GEMINI:
-            return callGeminiAPI(messages, temperature);
-        default:
-            throw new Error(`不支持的模型类型: ${currentModel}`);
+async function callAIAPI(
+    messages: ChatMessage[],
+    temperature = systemPromptConfig.globalAISettings.defaultTemp,
+    onStream?: (text: string) => void
+): Promise<string> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+
+    try {
+        const config = modelConfigs[currentModel];
+        const apiKey = import.meta.env[config.apiKeyEnvVar];
+        if (!apiKey) {
+            throw new Error(`${config.name} API密钥未设置。请在.env文件中添加${config.apiKeyEnvVar}`);
+        }
+
+        // 保留请求体调试日志，用于参考
+        const requestBody = {
+            model: systemPromptConfig.globalAISettings.model,
+            messages,
+            temperature,
+            max_tokens: config.maxTokens,
+            top_p: systemPromptConfig.globalAISettings.topP,
+            stream: !!onStream,
+            no_think: true
+        };
+        console.log('[API请求] 发送请求体:', JSON.stringify(requestBody, null, 2));
+
+        console.log(`发送请求到${config.name} API: ${config.endpoint}`);
+
+        const response = await fetch(config.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API响应错误:', response.status, errorText);
+            throw new Error(`API错误 (${response.status}): ${errorText}`);
+        }
+
+        // 添加响应头调试日志
+        console.log('[API响应] 响应头:', {
+            'content-type': response.headers.get('content-type'),
+            'transfer-encoding': response.headers.get('transfer-encoding')
+        });
+
+        if (onStream) {
+            const reader = response.body?.getReader();
+            if (!reader) {
+                throw new Error('无法获取响应流');
+            }
+
+            let fullResponse = '';
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                console.log('[API响应] 收到chunk:', chunk);
+
+                const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') {
+                            console.log('[API响应] 流式响应完成');
+                            continue;
+                        }
+
+                        try {
+                            const parsed = JSON.parse(data);
+                            const content = parsed.choices[0]?.delta?.content || '';
+                            if (content) {
+                                console.log('[API响应] 解析到content:', content);
+                                fullResponse += content;
+                                onStream(content);
+                            }
+                        } catch (e) {
+                            console.error('[API响应] 解析流式响应失败:', e, '原始数据:', data);
+                        }
+                    }
+                }
+            }
+
+            console.log('[API响应] 流式响应总长度:', fullResponse.length);
+            return fullResponse;
+        } else {
+            const data = await response.json();
+            return data.choices[0]?.message?.content || '抱歉，我现在无法回复。';
+        }
+    } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
     }
 }
 
@@ -284,9 +380,15 @@ async function logChatMessage(character: Character, message: string, messageType
  * 生成角色回复
  * @param characterId 角色ID
  * @param message 用户消息
+ * @param onStream 流式回调函数
  * @returns 角色回复
  */
-export async function generateCharacterReply(characterId: string, message: string, retryCount = 0): Promise<string> {
+export async function generateCharacterReply(
+    characterId: string,
+    message: string,
+    onStream?: (text: string) => void,
+    retryCount = 0
+): Promise<string> {
     const character = getCharacterById(characterId);
     if (!character) {
         throw new Error(`Character not found: ${characterId}`);
@@ -326,33 +428,44 @@ export async function generateCharacterReply(characterId: string, message: strin
             }
         }
 
-        console.log(`发送请求到DeepSeek API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1})`);
+        console.log(`发送请求到${modelConfigs[currentModel].name} API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1})`);
 
         // 调用API
         const startTime = Date.now();
-        const aiResponse = await callAIAPI(chatHistory);
+        let fullResponse = '';
+
+        // 如果有流式回调，使用流式响应
+        if (onStream) {
+            fullResponse = await callAIAPI(chatHistory, undefined, (chunk) => {
+                fullResponse += chunk;
+                onStream(chunk);
+            });
+        } else {
+            fullResponse = await callAIAPI(chatHistory);
+        }
+
         const responseTime = Date.now() - startTime;
 
         // 记录AI回复到数据库
-        await logChatMessage(character, aiResponse, 'assistant', 'auto', {
+        await logChatMessage(character, fullResponse, 'assistant', 'auto', {
             responseTime,
-            tokensUsed: Math.ceil(aiResponse.length / 4)
+            tokensUsed: Math.ceil(fullResponse.length / 4)
         });
 
         // 添加回复到历史记录
         chatHistory.push({
             role: 'assistant',
-            content: aiResponse
+            content: fullResponse
         });
 
-        return aiResponse;
+        return fullResponse;
 
     } catch (error: unknown) {
-        console.error('调用DeepSeek API失败 (尝试 ' + (retryCount + 1) + '/' + (MAX_RETRY_ATTEMPTS + 1) + '):', error);
+        console.error(`调用${modelConfigs[currentModel].name} API失败 (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1}):`, error);
 
         if (error instanceof Error && (error.message.includes('API密钥错误') || error.message.includes('API key'))) {
             console.error('===== API密钥错误 =====');
-            console.error('请确保已在.env文件中设置有效的VITE_DEEPSEEK_API_KEY');
+            console.error(`请确保已在.env文件中设置有效的${modelConfigs[currentModel].apiKeyEnvVar}`);
             console.error('查看API_SETUP.md文件获取详细设置指南');
             throw error;
         }
@@ -361,7 +474,7 @@ export async function generateCharacterReply(characterId: string, message: strin
         if (retryCount < MAX_RETRY_ATTEMPTS) {
             console.log(`等待 ${RETRY_DELAY}ms 后重试...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            return generateCharacterReply(characterId, message, retryCount + 1);
+            return generateCharacterReply(characterId, message, onStream, retryCount + 1);
         }
 
         // 如果重试次数已达上限，使用回退回复
@@ -410,15 +523,20 @@ export async function generatePlayerReply(characterId: string, message: string):
  * 生成自动回复选项
  * @param characterId 角色ID
  * @param message 角色消息
+ * @param chatHistory 对话历史
  * @returns 自动回复选项列表
  */
-export async function generateAutoReplies(characterId: string, message: string): Promise<string[]> {
+export async function generateAutoReplies(
+    characterId: string,
+    message: string,
+    chatHistory: Message[] = []
+): Promise<string[]> {
     const character = getCharacterById(characterId);
     if (!character) {
         throw new Error(`Character not found: ${characterId}`);
     }
 
-    const prompt = generateAutoReplyPrompt(character, message);
+    const prompt = generateAutoReplyPrompt(character, message, chatHistory);
     const messages: ChatMessage[] = [
         {
             role: 'system',

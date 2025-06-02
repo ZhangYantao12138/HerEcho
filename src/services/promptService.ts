@@ -1,6 +1,7 @@
 import type { Character } from '../types/character';
 import { getCharacterById } from '../config/characters';
 import { VIEWPOINT_MAPPING } from '../config/viewpointConfig';
+import type { Message } from '../types/chat';
 
 /**
  * 生成角色对话的 prompt
@@ -110,12 +111,22 @@ ${character.name}刚刚说：${message}
  * 生成自动回复选项的 prompt
  * @param character 对话角色
  * @param message 角色的消息
+ * @param chatHistory 对话历史
  * @returns 自动回复选项的 prompt
  */
-export function generateAutoReplyPrompt(character: Character, message: string): string {
+export function generateAutoReplyPrompt(character: Character, message: string, chatHistory: Message[] = []): string {
+    // 获取最近3条对话历史
+    const recentHistory = chatHistory.slice(-3);
+    const historyContext = recentHistory.map(msg =>
+        `${msg.isUser ? '用户' : character.name}: ${msg.content}`
+    ).join('\n');
+
     const basePrompt = generatePlayerPrompt(character, message);
 
     return `${basePrompt}
+
+最近对话历史：
+${historyContext}
 
 请生成3个可能的回复选项，每个选项都应该：
 1. 符合当前情境和角色设定
@@ -123,6 +134,7 @@ export function generateAutoReplyPrompt(character: Character, message: string): 
 3. 包含适当的动作和表情描述
 4. 长度适中，1-2句话为宜
 5. 根据与对话者的关系调整语气和态度
+6. 考虑对话历史上下文，保持连贯性
 
 请用"|"分隔不同的选项，选项前不要带数字或序号。严格按照以上要求回答。`;
 } 
