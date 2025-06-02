@@ -1,5 +1,8 @@
-// 导出角色配置
-export * from './characters';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// 加载根目录的环境变量
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // 导出prompt配置
 export * from './characterPrompts';
@@ -28,10 +31,10 @@ interface Config {
 
 export const config: Config = {
   db: {
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '3306'),
-    name: process.env.DB_NAME || 'herecho',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || ''
+    host: 'database-1.c7symcc24b18.ap-southeast-2.rds.amazonaws.com',
+    port: 3306,
+    name: '2C',
+    user: 'admin',
+    password: 'qfxm20250602'
   }
 }; 

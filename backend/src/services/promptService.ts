@@ -1,5 +1,4 @@
 import type { Character } from '../types/character';
-import { getCharacterById } from '../config/characters';
 import { VIEWPOINT_MAPPING } from '../config/viewpointConfig';
 import type { Message } from '../types/chat';
 
@@ -9,21 +8,11 @@ import type { Message } from '../types/chat';
  * @returns 角色对话的 prompt
  */
 export function generateCharacterPrompt(character: Character): string {
-    // 获取对话者信息
-    const viewpointRelation = VIEWPOINT_MAPPING.find(vp => vp.characterId === character.id);
-    const viewpointCharacter = viewpointRelation ? getCharacterById(viewpointRelation.viewpointId) : null;
-
     return `${character.systemPrompt}
 
 当前剧情背景：${character.sceneInfo.title}
 当前阶段：${character.sceneInfo.stage}
 当前进度：${character.sceneInfo.progress}%
-
-${viewpointCharacter ? `对话者信息：
-- 身份：${viewpointCharacter.name}
-- 背景：${viewpointCharacter.backgroundDescription}
-- 关系：${viewpointCharacter.relationships}
-- 当前状态：${viewpointCharacter.currentState || '正常'}` : ''}
 
 请记住：
 1. 所有表情和动作描述都用括号()括起来
@@ -48,33 +37,8 @@ export function generatePlayerPrompt(character: Character, message: string): str
         return generateDefaultPlayerPrompt(character, message);
     }
 
-    const playerCharacter = getCharacterById(viewpointRelation.viewpointId);
-    if (!playerCharacter) {
-        return generateDefaultPlayerPrompt(character, message);
-    }
-
-    return `${playerCharacter.systemPrompt}
-
-当前剧情背景：${character.sceneInfo.title}
-当前阶段：${character.sceneInfo.stage}
-当前进度：${character.sceneInfo.progress}%
-
-对话者信息：
-- 身份：${character.name}
-- 背景：${character.backgroundDescription}
-- 关系：${character.relationships}
-- 当前状态：${character.currentState || '正常'}
-
-${character.name}刚刚说：${message}
-
-请记住：
-1. 所有表情和动作描述都用括号()括起来
-2. 使用"我"自称，不要用角色名自称
-3. 保持角色设定的说话风格和语气
-4. 回应要有情感深度，符合当前剧情阶段
-5. 即使面对困难的问题，也要保持耐心和温柔
-6. 在表达复杂情感时，用更柔和的方式，避免过于尖锐或冷漠
-7. 根据与对话者的关系调整语气和态度`;
+    // 已移除 getCharacterById 相关逻辑，直接返回默认 prompt
+    return generateDefaultPlayerPrompt(character, message);
 }
 
 /**

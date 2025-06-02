@@ -25,13 +25,20 @@
                 "src/*"
             ]
         },
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "types": [
+            "vitest/globals",
+            "node",
+            "vue"
+        ]
     },
     "include": [
         "src/**/*.ts",
         "src/**/*.d.ts",
         "src/**/*.tsx",
-        "src/**/*.vue"
+        "src/**/*.vue",
+        "tests/**/*.ts",
+        "src/shims-vue.d.ts"
     ],
     "references": [
         {

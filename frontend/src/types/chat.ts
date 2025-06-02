@@ -1,8 +1,9 @@
 export interface Message {
-    id: string
-    role: 'user' | 'assistant'
+    id: number
+    characterId: string
     content: string
-    timestamp: number
+    timestamp: string
+    type: 'user' | 'character'
     audioUrl?: string
 }
 

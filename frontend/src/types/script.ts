@@ -11,7 +11,11 @@ export interface Character {
     name: string
     avatar: string
     description: string
-    ttsConfig: TTSConfig
+    ttsConfig?: {
+        voice: string
+        speed: number
+        pitch: number
+    }
 }
 
 export interface TTSConfig {

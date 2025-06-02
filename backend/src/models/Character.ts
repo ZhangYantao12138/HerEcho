@@ -11,6 +11,7 @@ export interface Character extends BaseModel {
     voice_pitch?: number;          // 语音音调
     voice_volume?: number;         // 语音音量
     fallback_reply: string;        // 回退回复，用于API连接失败时的默认回复
+    character_image?: string;      // 角色图片文件名
     created_at: Date;              // 创建时间
     updated_at: Date;              // 更新时间
 }
@@ -33,6 +34,7 @@ export class CharacterModel extends BaseModel {
                 voice_pitch: { type: ['number', 'null'], minimum: 0.5, maximum: 2.0 },
                 voice_volume: { type: ['number', 'null'], minimum: 0.0, maximum: 1.0 },
                 fallback_reply: { type: 'string', minLength: 1 },
+                character_image: { type: ['string', 'null'], maxLength: 255 },
                 created_at: { type: 'string', format: 'date-time' },
                 updated_at: { type: 'string', format: 'date-time' }
             }
@@ -55,8 +57,8 @@ export class CharacterModel extends BaseModel {
     }
 
     static async create(character: Omit<Character, 'created_at' | 'updated_at'>): Promise<Character> {
-        const [result] = await this.query<{ insertId: number }>(
-            'INSERT INTO characters (id, name, background_description, relationships, system_prompt, voice_id, voice_speed, voice_pitch, voice_volume, fallback_reply) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        await this.query(
+            'INSERT INTO characters (id, name, background_description, relationships, system_prompt, voice_id, voice_speed, voice_pitch, voice_volume, fallback_reply, character_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 character.id,
                 character.name,
@@ -67,7 +69,8 @@ export class CharacterModel extends BaseModel {
                 character.voice_speed,
                 character.voice_pitch,
                 character.voice_volume,
-                character.fallback_reply
+                character.fallback_reply,
+                character.character_image
             ]
         );
         return this.findById(character.id) as Promise<Character>;

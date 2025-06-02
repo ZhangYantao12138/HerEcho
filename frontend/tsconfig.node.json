@@ -4,9 +4,15 @@
         "skipLibCheck": true,
         "module": "ESNext",
         "moduleResolution": "bundler",
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "types": [
+            "vitest/globals",
+            "node"
+        ]
     },
     "include": [
-        "vite.config.ts"
+        "vite.config.ts",
+        "src/tests/**/*.ts",
+        "src/**/*.vue"
     ]
 }

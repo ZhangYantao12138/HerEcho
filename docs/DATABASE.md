@@ -17,6 +17,7 @@ HerEcho 使用 MySQL 数据库，部署在 AWS RDS 上。数据库主要用于�
 ```sql
 CREATE TABLE characters (
     id VARCHAR(10) PRIMARY KEY COMMENT '角色ID，格式：B[剧本编号]C[角色编号]',
+    book_id VARCHAR(10) NOT NULL COMMENT '剧本ID，格式：book[剧本编号]',
     name VARCHAR(50) NOT NULL COMMENT '角色名称',
     background_description TEXT COMMENT '角色背景描述',
     relationships TEXT COMMENT '角色关系描述',
@@ -28,7 +29,8 @@ CREATE TABLE characters (
     fallback_reply TEXT NOT NULL DEFAULT '连接断开了，请检查网络或向我们反馈问题' COMMENT '回退回复，用于API连接失败时的默认回复',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    INDEX idx_story_id (id(3)) COMMENT '剧本ID索引'
+    INDEX idx_story_id (id(3)) COMMENT '剧本ID索引',
+    INDEX idx_book_id (book_id) COMMENT '剧本ID索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
@@ -38,7 +40,9 @@ CREATE TABLE characters (
 ```sql
 CREATE TABLE stories (
     id VARCHAR(5) PRIMARY KEY COMMENT '剧本ID，格式：B[剧本编号]',
+    book_id VARCHAR(10) NOT NULL UNIQUE COMMENT '剧本ID，格式：book[剧本编号]',
     title VARCHAR(100) NOT NULL COMMENT '剧本标题',
+    cover_image TEXT COMMENT'封面图名字',
     description TEXT COMMENT '剧本描述',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
