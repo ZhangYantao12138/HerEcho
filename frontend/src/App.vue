@@ -1,12 +1,18 @@
 <script setup lang="ts">
-// App.vue
+// App root component
 </script>
 
 <template>
-  <router-view></router-view>
+  <div class="min-h-screen bg-gray-100">
+    <router-view></router-view>
+  </div>
 </template>
 
 <style>
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   margin: 0;
   padding: 0;
