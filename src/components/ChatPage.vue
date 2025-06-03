@@ -371,7 +371,7 @@ onMounted(() => {
         />
       </div>
 
-      <BottomNav />
+      <div class="nav-placeholder"></div>
     </div>
 
     <div class="confirm-dialog" v-if="showClearConfirm">
@@ -395,6 +395,10 @@ onMounted(() => {
   margin: 0 auto;
   width: 100%;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .background-fixed {
@@ -423,6 +427,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 情节信息样式 */
@@ -538,11 +547,13 @@ onMounted(() => {
 .chat-container {
   flex: 1;
   width: 100%;
-  background-color: rgba(26, 42, 42, 0.3); /* 与toggle-bar保持一致 */
+  background-color: rgba(26, 42, 42, 0.3);
   overflow-y: auto;
   padding: 10px 0;
   margin-top: 36px;
-  margin-bottom: 120px; /* 增加底部边距，确保不被输入框遮挡 */
+  margin-bottom: 120px;
+  -webkit-overflow-scrolling: touch; /* 添加弹性滚动 */
+  overscroll-behavior: contain; /* 防止滚动传播 */
 }
 
 .message-container {
@@ -668,5 +679,18 @@ onMounted(() => {
   border-radius: 12px;
   text-align: center;
   max-width: 80%;
+}
+
+.nav-placeholder {
+  height: 48px;
+  background-color: #000000;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
 }
 </style>

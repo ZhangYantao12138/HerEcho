@@ -355,7 +355,7 @@ onMounted(() => {
         />
       </div>
       
-      <BottomNav />
+      <div class="nav-placeholder"></div>
     </div>
     
     <!-- 清除对话确认对话框 -->
@@ -381,6 +381,10 @@ onMounted(() => {
   margin: 0 auto;
   width: 100%;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* 背景相关 */
@@ -411,6 +415,12 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 场景信息 */
@@ -489,6 +499,8 @@ onMounted(() => {
   padding: 10px 0;
   margin-top: 36px;
   margin-bottom: 120px;
+  -webkit-overflow-scrolling: touch; /* 添加弹性滚动 */
+  overscroll-behavior: contain; /* 防止滚动传播 */
   transition: all 0.3s ease;
 }
 
@@ -720,5 +732,18 @@ onMounted(() => {
   40% { 
     transform: scale(1.0);
   }
+}
+
+.nav-placeholder {
+  height: 48px;
+  background-color: #000000;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
 }
 </style> 
