@@ -392,3 +392,120 @@ mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD $DB_NAME < temp.sql
 # 清理临时文件
 rm temp.sql
 ```
+
+## 6. 数据库建表脚本
+
+### 6.1 建表脚本设计
+
+项目使用 TypeScript 实现的建表脚本，主要包含以下文件：
+
+1. `backend/src/scripts/createTables.ts`：主脚本文件，负责执行建表操作
+2. `backend/src/scripts/createTables.sql`：SQL 建表语句文件
+3. `backend/src/services/database/dbService.ts`：数据库服务类
+4. `backend/src/services/error/errorService.ts`：错误日志服务类
+
+### 6.2 建表脚本实现
+
+#### createTables.ts
+```typescript
+import fs from 'fs';
+import path from 'path';
+import { DatabaseService } from '../services/database/dbService';
+import { ErrorService } from '../services/error/errorService';
+
+async function createTables() {
+    const errorService = ErrorService.getInstance();
+    try {
+        console.log('开始创建数据库表...');
+        const db = DatabaseService.getInstance();
+        const sql = fs.readFileSync(path.join(__dirname, 'createTables.sql'), 'utf8');
+
+        // 分割SQL语句（按分号分割）
+        const statements = sql.split(';').filter(stmt => stmt.trim());
+
+        // 执行每个SQL语句
+        for (const statement of statements) {
+            if (statement.trim()) {
+                try {
+                    await db.query(statement);
+                    console.log('执行SQL语句成功:', statement.trim().substring(0, 50) + '...');
+                } catch (error: any) {
+                    console.error('执行SQL语句失败:', statement.trim().substring(0, 50) + '...');
+                    console.error('错误详情:', error);
+                    await errorService.logError({
+                        error_type: 'DATABASE_CREATE_TABLE_ERROR',
+                        error_message: `执行SQL语句失败: ${error.message}`,
+                        stack_trace: error.stack
+                    });
+                    throw error;
+                }
+            }
+        }
+
+        console.log('数据库表创建完成');
+    } catch (error: any) {
+        console.error('创建数据库表时出错:', error);
+        await errorService.logError({
+            error_type: 'DATABASE_CREATE_TABLES_ERROR',
+            error_message: `创建数据库表时出错: ${error.message}`,
+            stack_trace: error.stack
+        });
+        throw error;
+    }
+}
+
+// 执行创建表操作
+createTables()
+    .then(() => {
+        console.log('数据库表创建脚本执行完成');
+        process.exit(0);
+    })
+    .catch((error) => {
+        console.error('数据库表创建脚本执行失败:', error);
+        process.exit(1);
+    });
+```
+
+### 6.3 使用说明
+
+1. 环境准备：
+   - 确保已安装 Node.js 和 npm
+   - 确保已配置好 `.env` 文件中的数据库连接信息
+   - 确保已安装项目依赖（在 backend 目录下运行 `npm install`）
+
+2. 执行建表：
+   ```bash
+   # 进入 backend 目录
+   cd backend
+
+   # 执行建表脚本
+   npx ts-node src/scripts/createTables.ts
+   ```
+
+3. 注意事项：
+   - 建表脚本会自动处理 SQL 语句的分割和执行
+   - 每个建表语句都会单独执行，如果某个语句失败，会记录错误并停止执行
+   - 所有错误都会被记录到 `error_logs` 表中
+   - 建表脚本支持重复执行，使用了 `CREATE TABLE IF NOT EXISTS` 语法
+
+4. 错误处理：
+   - 脚本执行过程中的错误会被记录到控制台和 `error_logs` 表
+   - 每个错误都包含错误类型、错误信息和堆栈跟踪
+   - 如果发生错误，脚本会以非零状态码退出
+
+### 6.4 维护建议
+
+1. 版本控制：
+   - 将建表脚本和 SQL 文件纳入版本控制
+   - 每次修改表结构时，更新相应的 SQL 文件
+   - 记录表结构的变更历史
+
+2. 测试：
+   - 在开发环境中测试建表脚本
+   - 验证所有表的外键约束
+   - 检查索引的创建情况
+
+3. 备份：
+   - 执行建表脚本前备份现有数据
+   - 保留一份完整的数据库结构备份
+   - 定期验证备份的可用性
