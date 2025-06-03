@@ -1,21 +1,12 @@
 import mysql from 'mysql2/promise';
-import { config } from '../../config';
+import { dbConfig } from '../../config/database';
 
 export class DatabaseService {
     private static instance: DatabaseService;
     private pool: mysql.Pool;
 
     private constructor() {
-        this.pool = mysql.createPool({
-            host: config.db.host,
-            port: config.db.port,
-            database: config.db.name,
-            user: config.db.user,
-            password: config.db.password,
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0
-        });
+        this.pool = mysql.createPool(dbConfig);
     }
 
     public static getInstance(): DatabaseService {
@@ -25,29 +16,28 @@ export class DatabaseService {
         return DatabaseService.instance;
     }
 
-    public async query<T>(sql: string, params?: any[]): Promise<T[]> {
+    public async query<T>(sql: string, params?: any[]): Promise<T> {
         try {
             const [rows] = await this.pool.execute(sql, params);
-            return rows as T[];
+            return rows as T;
         } catch (error) {
-            console.error('Database query error:', error);
+            console.error('数据库查询错误:', error);
             throw error;
         }
     }
 
-    public async transaction<T>(callback: (connection: mysql.Connection) => Promise<T>): Promise<T> {
-        const connection = await this.pool.getConnection();
-        await connection.beginTransaction();
-
+    public async testConnection(): Promise<boolean> {
         try {
-            const result = await callback(connection);
-            await connection.commit();
-            return result;
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        } finally {
+            const connection = await this.pool.getConnection();
             connection.release();
+            return true;
+        } catch (error) {
+            console.error('数据库连接测试失败:', error);
+            return false;
         }
+    }
+
+    public async close(): Promise<void> {
+        await this.pool.end();
     }
 } 

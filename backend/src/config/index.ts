@@ -4,11 +4,6 @@ import path from 'path';
 // 加载根目录的环境变量
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-// 导出prompt配置
-export * from './characterPrompts';
-export * from './playerPrompts';
-export * from './promptConfig';
-
 // 一些常量配置
 export const CONFIG = {
   DEFAULT_CHARACTER_ID: 'B001C001', // 默认角色ID

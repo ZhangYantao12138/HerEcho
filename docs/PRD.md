@@ -18,7 +18,16 @@
 
 #### 数据服务
 - `scriptService.ts`: 剧本数据管理服务
+  - 从 `stories` 表获取剧本列表和详情
+  - 支持分页查询和排序
+  - 缓存常用剧本数据
+  - 处理剧本封面图片的存储和访问
+
 - `characterService.ts`: 角色数据管理服务
+  - 从 `characters` 表获取角色信息
+  - 管理角色配置（system_prompt, voice_id等）
+  - 处理角色头像的存储和访问
+  - 缓存角色数据以提高性能
 
 #### 交互流程
 1. 页面加载时获取所有剧本数据
@@ -73,24 +82,47 @@
 - `AutoReplyOptions.vue`: 自动回复选项组件，是一个小的按钮图标，用于展示自动回复情况，并允许交互。在自动回复生成中时，它会显示加载中；自动回复生成完后，点击可以展开选项列表，点击选项可以发送；点击图标或其他任意位置可以收起选项列表。
 
 #### 数据服务
-- `chatPromptService.ts`: 用于构建输入给大模型的prompt。会从数据库调用**用户所对话**的角色对应的提示词，再组合历史对话记录，以及统一的对话预设提示词，结合这三部分构建出用于输入给大模型的prompt。
-- `autoReplyOptionService.ts`: 用于构建输入给大模型的prompt。会从数据库调用**用户所扮演**的角色对应的提示词，再组合历史对话记录，以及统一的选项预设提示词，结合这三部分构建出用于输入给大模型的prompt。
-- `messageService.ts`: 消息处理服务。根据对话进展产生对应信号（在用户发送气泡后，产生“用户对话信号”，在角色完整生成气泡后，产生“角色对话信号”。并接收这些信号，基于逻辑调用其他几个服务。并且，接收大模型的回复，根据不同情况做出处理。（角色流式回复：需要做流式的对应处理，让他可以正确显示在气泡中，并输送给气泡组件；自动回复选项：需要把长文本根据固定格式拆成几条信息，变成可以显示在对应组件的格式，并返回给组件）
-- `deepseekStreamService.ts`: 结合prompt，从根目录的env获取api，从根目录的AIconfig文件获取参数，构建用于传送给deepseek的流式回复的请求头
-- `deepseekService.ts`: 结合prompt，从根目录的env获取api，从根目录的AIconfig文件获取参数，构建用于传送给deepseek的非流式请求头
-- `geminiStreamService.ts`: 结合prompt，从根目录的env获取api，从根目录的AIconfig文件获取参数，构建用于传送给gemini的l流式服务的请求头
-- `geminiService.ts`: 结合prompt，从根目录的env获取api，从根目录的AIconfig文件获取参数，构建用于传送给gemini的请求头
-- `ttsService.ts`: 文本转语音服务。负责将角色的回复文本转换为语音，并管理语音缓存。主要功能包括：
-  - 文本转语音：调用 MiniMax TTS API 将文本转换为语音
-  - 语音缓存：缓存已生成的语音，避免重复请求
-  - 语音参数管理：管理不同角色的语音参数（语速、音调、音量等）
-  - 语音播放控制：提供语音播放、暂停、继续、停止等控制功能
-  - 错误处理：处理 TTS API 调用失败、网络错误等异常情况
-- `ttsCacheService.ts`: 语音缓存服务。负责管理语音文件的缓存，提高应用性能和用户体验：
-  - 缓存管理：存储和检索已生成的语音文件
-  - 缓存清理：定期清理过期或不再使用的缓存文件
-  - 缓存状态：维护缓存文件的状态（生成中、已完成、错误等）
-  - 缓存配置：管理缓存相关的配置（存储位置、过期时间等）
+- `chatPromptService.ts`: 用于构建输入给大模型的prompt
+  - 从 `characters` 表获取角色system_prompt
+  - 从 `chat_messages` 表获取历史对话记录
+  - 组合对话预设提示词
+  - 记录token使用量到 `user_chat_stats` 表
+
+- `autoReplyOptionService.ts`: 用于构建输入给大模型的prompt
+  - 从 `characters` 表获取角色system_prompt
+  - 从 `chat_messages` 表获取历史对话记录
+  - 组合选项预设提示词
+  - 记录token使用量到 `user_chat_stats` 表
+
+- `messageService.ts`: 消息处理服务
+  - 在 `chat_messages` 表记录消息
+  - 更新 `user_chat_stats` 表的统计信息
+  - 处理消息的存储和检索
+  - 管理会话状态和消息索引
+
+- `ttsService.ts`: 文本转语音服务
+  - 从 `characters` 表获取语音参数
+  - 管理语音文件的存储和访问
+  - 记录语音生成错误到 `error_logs` 表
+  - 优化语音缓存策略
+
+- `ttsCacheService.ts`: 语音缓存服务
+  - 管理语音文件的缓存存储
+  - 定期清理过期缓存
+  - 优化缓存访问性能
+  - 处理缓存错误和异常
+
+- `userService.ts`: 用户管理服务
+  - 管理 `users` 表的用户信息
+  - 处理用户认证和授权
+  - 管理 `user_subscriptions` 表的订阅信息
+  - 处理用户状态更新
+
+- `errorService.ts`: 错误处理服务
+  - 记录错误信息到 `error_logs` 表
+  - 处理错误通知和告警
+  - 提供错误统计和分析
+  - 管理错误日志的清理
 
 #### 交互流程
 1. 页面布局：
@@ -161,3 +193,102 @@
 - 角色数据模型
 - 对话历史模型
 - 用户配置模型 
+
+## 5. 数据库操作流程
+
+### 5.1 剧本列表页面数据库操作
+
+#### 剧本数据获取
+1. 从 `stories` 表获取所有剧本信息：
+   - 查询字段：id, book_id, title, cover_image, description
+   - 按创建时间倒序排序
+   - 支持分页查询
+
+#### 角色数据关联
+1. 根据剧本ID从 `characters` 表获取相关角色：
+   - 查询字段：id, name, character_image
+   - 使用 book_id 关联查询
+   - 缓存角色数据以提高性能
+
+### 5.2 剧本详情弹窗数据库操作
+
+#### 剧本详情获取
+1. 从 `stories` 表获取单个剧本详细信息：
+   - 使用 book_id 精确查询
+   - 返回完整剧本信息
+
+#### 角色列表获取
+1. 从 `characters` 表获取该剧本的所有角色：
+   - 使用 book_id 关联查询
+   - 返回角色基本信息用于展示
+
+### 5.3 角色对话页面数据库操作
+
+#### 对话初始化
+1. 用户认证：
+   - 从 `users` 表验证用户身份
+   - 检查用户状态（active/inactive/banned）
+   - 验证用户订阅状态（从 `user_subscriptions` 表）
+
+2. 角色信息加载：
+   - 从 `characters` 表获取角色完整信息
+   - 包括：system_prompt, voice_id, voice_speed, voice_pitch, voice_volume
+   - 缓存角色配置以提高性能
+
+#### 对话消息处理
+1. 消息存储：
+   - 在 `chat_messages` 表记录每条消息
+   - 包含：session_id, user_id, character_id, message_index, content, source
+   - 记录使用的token数量
+
+2. 对话统计：
+   - 在 `user_chat_stats` 表记录统计信息
+   - 统计消息类型和token使用量
+   - 按会话ID和用户ID分组
+
+#### 错误处理
+1. 错误日志记录：
+   - 在 `error_logs` 表记录错误信息
+   - 包含：user_id, session_id, error_type, error_message, stack_trace
+   - 用于问题追踪和系统监控
+
+### 5.4 数据维护流程
+
+#### 定期清理
+1. 对话历史清理：
+   - 清理30天前的 `chat_messages` 记录
+   - 清理90天前的 `user_chat_stats` 记录
+   - 清理90天前的 `error_logs` 记录
+
+#### 订阅管理
+1. 订阅状态更新：
+   - 定期检查 `user_subscriptions` 表
+   - 更新过期订阅状态
+   - 处理订阅续费
+
+#### 性能优化
+1. 索引维护：
+   - 定期检查索引使用情况
+   - 优化查询性能
+   - 清理无用索引
+
+### 5.5 数据安全
+
+#### 用户数据保护
+1. 密码安全：
+   - 使用加密存储密码哈希
+   - 定期更新密码策略
+
+2. 数据访问控制：
+   - 基于用户角色的数据访问限制
+   - 敏感数据脱敏处理
+
+#### 数据备份
+1. 定期备份：
+   - 全量数据备份
+   - 增量数据备份
+   - 备份文件加密存储
+
+2. 数据恢复：
+   - 定期测试数据恢复流程
+   - 维护恢复文档 
