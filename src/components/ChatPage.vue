@@ -298,9 +298,14 @@ onMounted(() => {
     <div class="content-wrapper">
       <ChatHeader
         :currentCharacter="currentCharacter"
+        :isCollapsed="isCollapsed"
+        :hasDynamicBackground="true"
+        :isDynamicBackground="true"
         @test-api="testApiConnection"
         @change-viewpoint="handleViewpointChange"
         @model-changed="handleModelChange"
+        @toggle-collapse="toggleCollapse"
+        @toggle-background="() => {}"
       />
 
       <ChatSidebar

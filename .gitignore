@@ -24,7 +24,7 @@ dist-ssr
 *.sw?
 
 # Environment variables
-# .env  # 注释掉这行，这样 .env 文件就不会被忽略
+.env
 ISSUES.md
 
 # Documentation files
