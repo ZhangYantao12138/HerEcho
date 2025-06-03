@@ -69,36 +69,16 @@ watch(() => route.params, async (newParams) => {
     // 清除历史记录
     clearChatHistory();
     
-    // 重置消息列表
+    // 重置消息列表，显示背景和初始消息
     messages.value = [
       {
         id: Date.now(),
         content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
         isUser: false,
         hasAudio: false
-      }
+      },
+      ...newCharacter.initialMessages
     ];
-    
-    // 检查是否有对应的玩家视角
-    const viewpoint = VIEWPOINT_MAPPING.find(vp => vp.characterId === newCharacterId);
-    if (viewpoint) {
-      // 如果有玩家视角，生成玩家视角的初始消息
-      try {
-        const playerPrompt = `你现在是${newCharacter.name}，请用简短的话开始对话。`;
-        const playerResponse = await generatePlayerReply(newCharacterId, playerPrompt);
-        messages.value.push({
-          id: Date.now(),
-          content: playerResponse,
-          isUser: false,
-          hasAudio: true
-        });
-      } catch (error) {
-        console.error('生成玩家视角消息失败:', error);
-      }
-    }
-    
-    // 添加角色的初始消息
-    messages.value.push(...newCharacter.initialMessages);
     
     // 重置进度
     progress.value = newCharacter.sceneInfo.progress;

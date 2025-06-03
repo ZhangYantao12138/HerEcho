@@ -78,13 +78,14 @@ function closeDetails() {
 
 <style scoped>
 .dream-home-container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   background-color: #121212;
   color: white;
-  padding-bottom: 60px;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 </style> 
