@@ -27,6 +27,7 @@ CREATE TABLE characters (
     voice_pitch FLOAT DEFAULT 1.0 COMMENT '语音音调',
     voice_volume FLOAT DEFAULT 1.0 COMMENT '语音音量',
     fallback_reply TEXT NOT NULL DEFAULT '连接断开了，请检查网络或向我们反馈问题' COMMENT '回退回复，用于API连接失败时的默认回复',
+    character_image VARCHAR(255) COMMENT '角色头像图片路径',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_story_id (id(3)) COMMENT '剧本ID索引',
@@ -125,6 +126,24 @@ CREATE TABLE user_chat_stats (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 ```
 
+### 2.6 错误日志表
+
+#### error_logs（错误日志表）
+```sql
+CREATE TABLE error_logs (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
+    user_id BIGINT UNSIGNED COMMENT '用户ID',
+    session_id VARCHAR(50) COMMENT '会话ID',
+    error_type VARCHAR(50) NOT NULL COMMENT '错误类型',
+    error_message TEXT NOT NULL COMMENT '错误信息',
+    stack_trace TEXT COMMENT '堆栈跟踪',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user_time (user_id, created_at) COMMENT '用户时间索引',
+    INDEX idx_session_time (session_id, created_at) COMMENT '会话时间索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
 ## 3. 数据库维护
 
 ### 3.1 定期维护任务
@@ -138,6 +157,10 @@ WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
 -- 清理30天前的消息记录
 DELETE FROM chat_messages 
 WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY);
+
+-- 清理90天前的错误日志
+DELETE FROM error_logs
+WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
 
 -- 更新过期的订阅状态
 UPDATE user_subscriptions 
@@ -157,6 +180,15 @@ SELECT
 FROM chat_messages
 WHERE DATE(created_at) = CURDATE()
 GROUP BY user_id, DATE(created_at);
+
+-- 生成错误统计
+SELECT 
+    error_type,
+    COUNT(*) as error_count,
+    DATE(created_at) as date
+FROM error_logs
+WHERE DATE(created_at) = CURDATE()
+GROUP BY error_type, DATE(created_at);
 ```
 
 ### 3.2 性能优化
@@ -185,6 +217,7 @@ GROUP BY user_id, DATE(created_at);
    - 消息处理量
    - Token 使用量
    - 订阅状态分布
+   - 错误率统计
 
 ## 4. 数据库连接配置
 
