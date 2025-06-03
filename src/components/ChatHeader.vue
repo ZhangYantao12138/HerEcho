@@ -5,7 +5,8 @@ import {
   RiArrowLeftSLine,
   RiMenuLine,
   RiSettings4Line,
-  RiCloseLine
+  RiCloseLine,
+  RiArrowLeftLine
 } from '@remixicon/vue';
 import { characters } from '../config/characters';
 import { getScriptById } from '../config/scripts';
@@ -20,10 +21,19 @@ const router = useRouter();
 const route = useRoute();
 
 const props = defineProps<{
-  currentCharacter: Character
+  currentCharacter: Character;
+  isCollapsed: boolean;
+  hasDynamicBackground: boolean;
+  isDynamicBackground: boolean;
 }>();
 
-const emit = defineEmits(['test-api', 'change-viewpoint', 'model-changed']);
+const emit = defineEmits<{
+  (e: 'toggle-collapse'): void;
+  (e: 'toggle-background'): void;
+  (e: 'test-api'): void;
+  (e: 'model-changed', model: AIModel): void;
+  (e: 'change-viewpoint', viewpoint: ViewpointRelation): void;
+}>();
 
 const showCharacterList = ref(false);
 const showSettingsMenu = ref(false);
@@ -126,7 +136,7 @@ onUnmounted(() => {
   <header class="chat-header">
     <div class="left-section">
       <button class="back-button" @click="goBack">
-        <RiArrowLeftSLine />
+        <RiArrowLeftLine />
       </button>
 
       <div class="character-selector" @click="toggleCharacterList" ref="characterSelectorRef">
@@ -175,11 +185,24 @@ onUnmounted(() => {
             <div class="settings-section">
               <h4>视角设置</h4>
               <ViewpointSelector 
-                :characterId="currentCharacter.id"
-                :viewpoints="getAvailableViewpoints(currentCharacter.id)"
-                :currentViewpoint="getCurrentViewpoint(currentCharacter.id)"
+                :characterId="props.currentCharacter.id"
+                :viewpoints="getAvailableViewpoints(props.currentCharacter.id)"
+                :currentViewpoint="getCurrentViewpoint(props.currentCharacter.id)"
                 @select-viewpoint="handleViewpointChange"
               />
+            </div>
+
+            <div class="settings-section" v-if="props.hasDynamicBackground">
+              <h4>背景设置</h4>
+              <div class="settings-item">
+                <span>动态背景</span>
+                <label class="switch">
+                  <input type="checkbox" 
+                         :checked="props.isDynamicBackground"
+                         @change="emit('toggle-background')">
+                  <span class="slider round"></span>
+                </label>
+              </div>
             </div>
             
             <div class="settings-section">
@@ -308,6 +331,7 @@ onUnmounted(() => {
 .right-section {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .settings-menu {

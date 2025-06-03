@@ -8,6 +8,11 @@ import B001C006_BG from '../assets/Characters/Book1/character_jbj_B001C006.png';
 import B001C007_BG from '../assets/Characters/Book1/character_mhm_B001C007.png';
 import B001C008_BG from '../assets/Characters/Book1/character_ys_B001C008.png';
 import B001C009_BG from '../assets/Characters/Book1/character_aq_B001C010.png';
+// 导入视频文件
+import B001C006_VIDEO from '../assets/Characters/Book1/蒋伯驾.mp4';
+// 导入羌青瓷和阿奇的视频
+import B001C001_VIDEO from '../assets/Characters/Book1/羌青瓷.mp4';
+import B001C009_VIDEO from '../assets/Characters/Book1/阿奇.mp4';
 
 // Book2 角色图片导入
 import B002C001_BG from '../assets/Characters/Book2/character_blj_B002C001.png';
@@ -23,7 +28,7 @@ export const characterQiangQingCiB001C001: Character = {
     book_id: 'book001',
     name: '羌青瓷',
     avatar: B001C001_BG,
-    backgroundImage: B001C001_BG,
+    backgroundImage: B001C001_VIDEO, // 使用视频作为背景
     backgroundDescription: '优雅神秘的心理医生，莱诺家族继承者。与程聿怀有着复杂的过去，曾为保护他消除其记忆。',
     voiceSettings: {
         voice_id: 'female-chengshu',
@@ -389,7 +394,7 @@ export const characterArchieB001C009: Character = {
     book_id: 'book001',
     name: '阿奇',
     avatar: B001C009_BG,
-    backgroundImage: B001C009_BG,
+    backgroundImage: B001C009_VIDEO, // 使用视频作为背景
     backgroundDescription: '布雷诺传奇神偷，声音多变、身手矫健，擅长魔术与心理战，是黛利拉生命中极为重要的伴侣。',
     voiceSettings: {
         voice_id: 'male-qn-jingying',
@@ -461,7 +466,7 @@ export const characterJiangBojiaB001C006: Character = {
     book_id: 'book001',
     name: '蒋伯驾',
     avatar: B001C006_BG,
-    backgroundImage: B001C006_BG,
+    backgroundImage: B001C006_VIDEO, // 使用视频作为背景
     backgroundDescription: '缪家私生子，母亲是保洁员。精于算计，谨慎克制，始终铭记母亲"从缪家拿回公平"的叮嘱。',
     voiceSettings: {
         voice_id: 'male-qn-badao',

@@ -26,6 +26,23 @@ if (!scriptId || !characterId) {
 // 当前选中的角色
 const currentCharacter = ref<Character>(getCharacterById(characterId) || getDefaultCharacter());
 
+// 添加背景类型状态
+const isDynamicBackground = ref(true);
+
+// 计算属性：判断当前角色是否有动态背景
+const hasDynamicBackground = computed(() => {
+  return currentCharacter.value.backgroundImage.endsWith('.mp4');
+});
+
+// 计算属性：获取当前背景
+const currentBackground = computed(() => {
+  if (isDynamicBackground.value && hasDynamicBackground.value) {
+    return currentCharacter.value.backgroundImage;
+  }
+  // 如果是静态背景，使用角色的头像作为背景
+  return currentCharacter.value.avatar;
+});
+
 // 消息列表
 const messages = ref<Message[]>([
   {
@@ -93,6 +110,7 @@ watch(() => route.params, async (newParams) => {
 // 监听角色变化
 watch(() => currentCharacter.value, () => {
   clearChatHistory();
+  isDynamicBackground.value = hasDynamicBackground.value;
 }, { deep: true });
 
 // 修改handleAIResponse函数
@@ -336,6 +354,13 @@ async function testApiConnection() {
   }
 }
 
+// 切换背景类型
+function toggleBackgroundType() {
+  if (hasDynamicBackground.value) {
+    isDynamicBackground.value = !isDynamicBackground.value;
+  }
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -346,11 +371,25 @@ onMounted(() => {
     <!-- 固定背景图 -->
     <div class="background-fixed">
       <transition name="fade">
-        <img 
-          :key="currentCharacter.id"
-          :src="currentCharacter.backgroundImage" 
-          :alt="currentCharacter.name" 
-        />
+        <template v-if="isDynamicBackground && hasDynamicBackground">
+          <video 
+            :key="currentCharacter.id"
+            :src="currentBackground" 
+            autoplay
+            loop
+            muted
+            playsinline
+            class="background-video"
+            preload="auto"
+          />
+        </template>
+        <template v-else>
+          <img 
+            :key="currentCharacter.id"
+            :src="currentBackground"
+            class="background-image"
+          />
+        </template>
       </transition>
     </div>
     
@@ -358,7 +397,10 @@ onMounted(() => {
       <ChatHeader 
         :current-character="currentCharacter"
         :is-collapsed="isCollapsed"
+        :has-dynamic-background="hasDynamicBackground"
+        :is-dynamic-background="isDynamicBackground"
         @toggle-collapse="toggleCollapse"
+        @toggle-background="toggleBackgroundType"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
       />
@@ -481,14 +523,33 @@ onMounted(() => {
   max-width: 480px;
   z-index: 1;
   pointer-events: none;
+  overflow: hidden;
 }
 
-.background-fixed img {
+.background-fixed .background-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   transition: opacity 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.background-fixed .background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 内容布局 */
