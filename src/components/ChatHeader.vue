@@ -29,6 +29,8 @@ const showCharacterList = ref(false);
 const showSettingsMenu = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 const settingsMenuRef = ref<HTMLElement | null>(null);
+const showSettings = ref(false);
+const autoPlayTTS = ref(false);
 
 // 获取当前剧本ID
 const scriptId = computed(() => route.params.scriptId as string);
@@ -102,8 +104,17 @@ function handleTestApi() {
   showSettingsMenu.value = false;
 }
 
+// 保存设置到本地存储
+function saveSettings() {
+  localStorage.setItem('autoPlayTTS', autoPlayTTS.value.toString());
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
+  const savedAutoPlay = localStorage.getItem('autoPlayTTS');
+  if (savedAutoPlay !== null) {
+    autoPlayTTS.value = savedAutoPlay === 'true';
+  }
 });
 
 onUnmounted(() => {
@@ -176,6 +187,14 @@ onUnmounted(() => {
               <button class="test-api-button" @click="handleTestApi">
                 测试API连接
               </button>
+            </div>
+
+            <div class="settings-item">
+              <span>自动播放语音</span>
+              <label class="switch">
+                <input type="checkbox" v-model="autoPlayTTS" @change="saveSettings">
+                <span class="slider round"></span>
+              </label>
             </div>
           </div>
         </Transition>
@@ -364,5 +383,64 @@ onUnmounted(() => {
 
 .test-api-button:hover {
   background-color: #34495e;
+}
+
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  color: #fff;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #42b883;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.slider.round {
+  border-radius: 20px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
 }
 </style>

@@ -11,6 +11,14 @@ export interface SceneInfo {
     progress: number;
 }
 
+export interface VoiceSettings {
+    voice_id: string;
+    speed: number;
+    vol: number;
+    pitch: number;
+    emotion: 'happy' | 'sad' | 'angry' | 'fearful' | 'disgusted' | 'surprised' | 'neutral';
+}
+
 export interface Character {
     id: string;
     book_id: string;
@@ -19,6 +27,7 @@ export interface Character {
     backgroundDescription: string;
     systemPrompt: string;
     backgroundImage: string;
+    voiceSettings: VoiceSettings;
     sceneInfo: {
         title: string;
         stage: string;
