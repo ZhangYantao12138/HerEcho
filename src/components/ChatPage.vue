@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch, nextTick, provide, type Ref } from 'vue';
 // 解决方案一：选择 main 分支的图标导入
 import { RiDeleteBin2Line } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
+import ChatSidebar from './ChatSidebar.vue';
 // 解决方案二：选择 main 分支的服务导入
-import { clearChatHistory } from '../services/chatService';
+import { clearChatHistory, setCurrentModel } from '../services/chatService';
 import { getDefaultCharacter } from '../config/characters';
 import type { Character } from '../types/character';
 import type { ViewpointRelation } from '../types/viewpoint';
 import { VIEWPOINT_MAPPING } from '../services/viewpointService';
 import { logViewpointChange } from '../services/logService';
+import type { AIModel } from '../types/chat';
+import { useSidebarStore } from '../stores/sidebarStore';
 
 // 使用Vite的资源导入方式导入背景图片
 import bgImageSrc from '../assets/character_qqc_B001C001.png';
@@ -116,17 +119,51 @@ const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false); // 添加清除确认对话框状态
 // const currentCharacter = ref<Character>(getDefaultCharacter()); // 确保此行已被上面的统一定义替换或删除
 
+// 使用侧边栏 store
+const sidebarStore = useSidebarStore();
+
 // 定义 testApiConnection 函数
 const testApiConnection = async () => {
   console.log("尝试连接 API...");
   try {
     // 这里可以添加实际的API测试逻辑
-    console.log("API 测试成功");
-    // 在这里处理API测试成功的逻辑，例如显示一个提示
-  } catch (error) {
+    const response = await fetch('/api/test', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (data.success) {
+      console.log("API 测试成功");
+      // 添加系统消息
+      messages.value.push({
+        id: Date.now(),
+        content: '【API 连接测试成功】',
+        isUser: false,
+        hasAudio: false,
+        isSystem: true
+      });
+    } else {
+      throw new Error(data.error || 'API 测试失败');
+    }
+  } catch (error: any) {
     console.error("API 测试失败:", error);
-    // 在这里处理API测试失败的逻辑
+    // 添加系统消息
+    messages.value.push({
+      id: Date.now(),
+      content: `【API 连接测试失败: ${error.message || '未知错误'}】`,
+      isUser: false,
+      hasAudio: false,
+      isSystem: true
+    });
   }
+  scrollToBottom();
 };
 
 // 发送消息
@@ -242,6 +279,11 @@ const lastCharacterMessage = computed(() => {
   return characterMessages.length > 0 ? characterMessages[characterMessages.length - 1] : undefined;
 });
 
+// 处理模型切换
+function handleModelChange(model: AIModel) {
+  setCurrentModel(model);
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -256,8 +298,18 @@ onMounted(() => {
     <div class="content-wrapper">
       <ChatHeader
         :currentCharacter="currentCharacter"
-        @test-api="testApiConnection" 
-        @change-viewpoint="handleViewpointChange" 
+        @test-api="testApiConnection"
+        @change-viewpoint="handleViewpointChange"
+        @model-changed="handleModelChange"
+      />
+
+      <ChatSidebar
+        :show="sidebarStore.isOpen"
+        :currentCharacter="currentCharacter"
+        @close="() => {
+          console.log('ChatPage: 收到关闭事件');
+          sidebarStore.close();
+        }"
       />
 
       <div class="scene-container" v-if="!isCollapsed">
@@ -336,7 +388,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ... 样式部分保持不变 ... */
 .chat-page {
   height: 100vh;
   position: relative;
@@ -371,6 +422,7 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* 情节信息样式 */
