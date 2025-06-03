@@ -41,7 +41,7 @@ export const characterQiangQingCiB001C001: Character = {
     initialMessages: [
         {
             id: 1,
-            content: '(轻轻摇晃着酒杯) "牵，你来了。"',
+            content: '(轻轻摇晃着酒杯) "聿，你来了。"',
             isUser: false,
             hasAudio: true
         },

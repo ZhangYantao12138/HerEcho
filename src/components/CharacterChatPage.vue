@@ -110,6 +110,14 @@ async function handleAIResponse(response: string) {
     });
   }
   
+  // 当生成完成时，确保最后一条消息有音频图标
+  if (!isGenerating.value) {
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage && !lastMessage.isUser) {
+      lastMessage.hasAudio = true;
+    }
+  }
+  
   updateProgress();
   scrollToBottom();
 }
@@ -127,7 +135,7 @@ async function sendMessage(text: string) {
     id: loadingMessageId,
     content: '<div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>',
     isUser: false,
-    hasAudio: false
+    hasAudio: true
   });
   
   isGenerating.value = true;
@@ -334,8 +342,16 @@ onMounted(() => {
               <div class="background-description">{{ currentCharacter.backgroundDescription }}</div>
             </template>
             <template v-else>
-              <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
+              <div v-if="!message.isUser" class="character-avatar">
+                <img :src="currentCharacter.avatar" :alt="currentCharacter.name" />
+              </div>
               <div class="message-bubble">
+                <div v-if="message.hasAudio && !message.isUser" class="audio-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                    <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 11-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />
+                    <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
+                  </svg>
+                </div>
                 <div class="message-content" v-html="message.content"></div>
               </div>
             </template>
@@ -523,12 +539,28 @@ onMounted(() => {
   justify-content: flex-start;
 }
 
+.character-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.character-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .message-bubble {
   max-width: 80%;
   padding: 10px 12px;
   border-radius: 12px;
   word-break: break-word;
   backdrop-filter: blur(4px);
+  position: relative;
 }
 
 .user-message .message-bubble {
@@ -624,10 +656,29 @@ onMounted(() => {
 
 /* 音频图标 */
 .audio-icon {
-  margin-right: 8px;
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(26, 26, 26, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #cccccc;
-  font-size: 16px;
-  margin-top: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audio-icon:hover {
+  background-color: rgba(26, 26, 26, 0.9);
+  color: #ffffff;
+}
+
+.audio-icon svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* 确认对话框 */
