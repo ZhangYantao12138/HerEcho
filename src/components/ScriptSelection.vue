@@ -117,14 +117,15 @@ function startCustomCharacterChat(data: { characterName: string, characterSettin
 
 <style scoped>
 .script-selection-container {
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   background-color: #121212;
   color: white;
-  padding-bottom: 60px;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .script-header {
@@ -132,6 +133,8 @@ function startCustomCharacterChat(data: { characterName: string, characterSettin
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   max-width: 480px;
   margin: 0 auto;
+  width: 100%;
+  flex-shrink: 0;
 }
 
 .page-title {
@@ -147,5 +150,8 @@ function startCustomCharacterChat(data: { characterName: string, characterSettin
   max-width: 480px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 80px;
 }
 </style> 

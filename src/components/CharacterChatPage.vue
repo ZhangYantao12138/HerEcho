@@ -10,6 +10,7 @@ import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
 import type { AIModel } from '../types/chat';
 import { VIEWPOINT_MAPPING } from '../config/viewpointConfig';
+import { TTSService } from '../services/TTSService';
 
 // 获取路由参数
 const route = useRoute();
@@ -24,6 +25,23 @@ if (!scriptId || !characterId) {
 
 // 当前选中的角色
 const currentCharacter = ref<Character>(getCharacterById(characterId) || getDefaultCharacter());
+
+// 添加背景类型状态
+const isDynamicBackground = ref(true);
+
+// 计算属性：判断当前角色是否有动态背景
+const hasDynamicBackground = computed(() => {
+  return currentCharacter.value.backgroundImage.endsWith('.mp4');
+});
+
+// 计算属性：获取当前背景
+const currentBackground = computed(() => {
+  if (isDynamicBackground.value && hasDynamicBackground.value) {
+    return currentCharacter.value.backgroundImage;
+  }
+  // 如果是静态背景，使用角色的头像作为背景
+  return currentCharacter.value.avatar;
+});
 
 // 消息列表
 const messages = ref<Message[]>([
@@ -56,6 +74,9 @@ const showClearConfirm = ref(false);
 // 添加新的响应式变量
 const isGenerating = ref(false);
 const currentStreamingMessage = ref('');
+const currentAudioData = ref<Map<number, ArrayBuffer>>(new Map());
+const isPlaying = ref<Map<number, boolean>>(new Map());
+const autoPlayTTS = ref(false);
 
 // 监听路由参数变化
 watch(() => route.params, async (newParams) => {
@@ -69,36 +90,16 @@ watch(() => route.params, async (newParams) => {
     // 清除历史记录
     clearChatHistory();
     
-    // 重置消息列表
+    // 重置消息列表，显示背景和初始消息
     messages.value = [
       {
         id: Date.now(),
         content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
         isUser: false,
         hasAudio: false
-      }
+      },
+      ...newCharacter.initialMessages
     ];
-    
-    // 检查是否有对应的玩家视角
-    const viewpoint = VIEWPOINT_MAPPING.find(vp => vp.characterId === newCharacterId);
-    if (viewpoint) {
-      // 如果有玩家视角，生成玩家视角的初始消息
-      try {
-        const playerPrompt = `你现在是${newCharacter.name}，请用简短的话开始对话。`;
-        const playerResponse = await generatePlayerReply(newCharacterId, playerPrompt);
-        messages.value.push({
-          id: Date.now(),
-          content: playerResponse,
-          isUser: false,
-          hasAudio: true
-        });
-      } catch (error) {
-        console.error('生成玩家视角消息失败:', error);
-      }
-    }
-    
-    // 添加角色的初始消息
-    messages.value.push(...newCharacter.initialMessages);
     
     // 重置进度
     progress.value = newCharacter.sceneInfo.progress;
@@ -109,29 +110,98 @@ watch(() => route.params, async (newParams) => {
 // 监听角色变化
 watch(() => currentCharacter.value, () => {
   clearChatHistory();
+  isDynamicBackground.value = hasDynamicBackground.value;
 }, { deep: true });
 
 // 修改handleAIResponse函数
 async function handleAIResponse(response: string) {
-  if (isGenerating.value) {
-    // 如果是流式响应，直接更新当前消息
-    currentStreamingMessage.value = response;
-    const lastMessage = messages.value[messages.value.length - 1];
-    if (lastMessage) {
-      lastMessage.content = response;
+  console.log('[Chat] 收到AI响应:', response);
+  
+  // 添加消息到列表
+  const messageId = Date.now();
+  messages.value.push({
+    id: messageId,
+    content: response,
+    isUser: false,
+    hasAudio: true
+  });
+
+  // 生成TTS音频
+  try {
+    console.log('[Chat] 开始生成TTS音频, messageId:', messageId);
+    const ttsService = TTSService.getInstance();
+    const audioData = await ttsService.generateAudio(response, currentCharacter.value);
+    
+    if (!audioData || audioData.byteLength === 0) {
+      throw new Error('生成的音频数据为空');
     }
-  } else {
-    // 如果是完整响应，添加到消息列表
+    
+    console.log('[Chat] TTS音频生成成功:', {
+      messageId,
+      audioDataSize: audioData.byteLength,
+      hasAudioData: !!audioData
+    });
+    
+    // 确保在设置数据之前先初始化Map
+    if (!currentAudioData.value) {
+      currentAudioData.value = new Map();
+    }
+    if (!isPlaying.value) {
+      isPlaying.value = new Map();
+    }
+    
+    currentAudioData.value.set(messageId, audioData);
+    isPlaying.value.set(messageId, false);
+    
+    // 如果启用了自动播放，则自动播放音频
+    if (autoPlayTTS.value) {
+      console.log('[Chat] 自动播放音频, messageId:', messageId);
+      await ttsService.playAudio(audioData);
+      isPlaying.value.set(messageId, true);
+    }
+  } catch (error) {
+    console.error('[Chat] TTS生成失败:', error);
     messages.value.push({
       id: Date.now(),
-      content: response,
+      content: '语音生成失败，请重试',
       isUser: false,
-      hasAudio: true
+      hasAudio: false
     });
   }
-  
-  updateProgress();
-  scrollToBottom();
+}
+
+// 修改音频播放控制函数
+async function toggleAudioPlayback(messageId: number) {
+  console.log('[Chat] 切换音频播放状态:', {
+    messageId,
+    hasAudioData: !!currentAudioData.value.get(messageId),
+    audioDataSize: currentAudioData.value.get(messageId)?.byteLength,
+    isCurrentlyPlaying: isPlaying.value.get(messageId)
+  });
+
+  const audioData = currentAudioData.value.get(messageId);
+  if (!audioData) {
+    console.warn('[Chat] 未找到音频数据:', messageId);
+    return;
+  }
+
+  const ttsService = TTSService.getInstance();
+  const isCurrentlyPlaying = isPlaying.value.get(messageId);
+
+  try {
+    if (isCurrentlyPlaying) {
+      console.log('[Chat] 停止播放音频:', messageId);
+      ttsService.stopAudio();
+      isPlaying.value.set(messageId, false);
+    } else {
+      console.log('[Chat] 开始播放音频:', messageId);
+      await ttsService.playAudio(audioData);
+      isPlaying.value.set(messageId, true);
+    }
+  } catch (error) {
+    console.error('[Chat] 音频播放失败:', error);
+    isPlaying.value.set(messageId, false);
+  }
 }
 
 // 修改sendMessage函数
@@ -147,7 +217,7 @@ async function sendMessage(text: string) {
     id: loadingMessageId,
     content: '<div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>',
     isUser: false,
-    hasAudio: false
+    hasAudio: true
   });
   
   isGenerating.value = true;
@@ -284,6 +354,13 @@ async function testApiConnection() {
   }
 }
 
+// 切换背景类型
+function toggleBackgroundType() {
+  if (hasDynamicBackground.value) {
+    isDynamicBackground.value = !isDynamicBackground.value;
+  }
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -294,11 +371,25 @@ onMounted(() => {
     <!-- 固定背景图 -->
     <div class="background-fixed">
       <transition name="fade">
-        <img 
-          :key="currentCharacter.id"
-          :src="currentCharacter.backgroundImage" 
-          :alt="currentCharacter.name" 
-        />
+        <template v-if="isDynamicBackground && hasDynamicBackground">
+          <video 
+            :key="currentCharacter.id"
+            :src="currentBackground" 
+            autoplay
+            loop
+            muted
+            playsinline
+            class="background-video"
+            preload="auto"
+          />
+        </template>
+        <template v-else>
+          <img 
+            :key="currentCharacter.id"
+            :src="currentBackground"
+            class="background-image"
+          />
+        </template>
       </transition>
     </div>
     
@@ -306,7 +397,10 @@ onMounted(() => {
       <ChatHeader 
         :current-character="currentCharacter"
         :is-collapsed="isCollapsed"
+        :has-dynamic-background="hasDynamicBackground"
+        :is-dynamic-background="isDynamicBackground"
         @toggle-collapse="toggleCollapse"
+        @toggle-background="toggleBackgroundType"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
       />
@@ -354,8 +448,19 @@ onMounted(() => {
               <div class="background-description">{{ currentCharacter.backgroundDescription }}</div>
             </template>
             <template v-else>
-              <div v-if="message.hasAudio && !message.isUser" class="audio-icon">🔊</div>
+              <div v-if="!message.isUser" class="character-avatar">
+                <img :src="currentCharacter.avatar" :alt="currentCharacter.name" />
+              </div>
               <div class="message-bubble">
+                <div v-if="message.hasAudio && !message.isUser" 
+                     class="audio-icon" 
+                     @click="toggleAudioPlayback(message.id)"
+                     :class="{ 'playing': isPlaying.get(message.id) }">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                    <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 11-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />
+                    <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
+                  </svg>
+                </div>
                 <div class="message-content" v-html="message.content"></div>
               </div>
             </template>
@@ -375,7 +480,7 @@ onMounted(() => {
         />
       </div>
       
-      <BottomNav />
+      <div class="nav-placeholder"></div>
     </div>
     
     <!-- 清除对话确认对话框 -->
@@ -401,6 +506,10 @@ onMounted(() => {
   margin: 0 auto;
   width: 100%;
   overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 /* 背景相关 */
@@ -414,14 +523,33 @@ onMounted(() => {
   max-width: 480px;
   z-index: 1;
   pointer-events: none;
+  overflow: hidden;
 }
 
-.background-fixed img {
+.background-fixed .background-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   transition: opacity 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.background-fixed .background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 0.3s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 内容布局 */
@@ -431,6 +559,12 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* 场景信息 */
@@ -509,6 +643,8 @@ onMounted(() => {
   padding: 10px 0;
   margin-top: 36px;
   margin-bottom: 120px;
+  -webkit-overflow-scrolling: touch; /* 添加弹性滚动 */
+  overscroll-behavior: contain; /* 防止滚动传播 */
   transition: all 0.3s ease;
 }
 
@@ -531,12 +667,28 @@ onMounted(() => {
   justify-content: flex-start;
 }
 
+.character-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.character-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .message-bubble {
   max-width: 80%;
   padding: 10px 12px;
   border-radius: 12px;
   word-break: break-word;
   backdrop-filter: blur(4px);
+  position: relative;
 }
 
 .user-message .message-bubble {
@@ -632,10 +784,42 @@ onMounted(() => {
 
 /* 音频图标 */
 .audio-icon {
-  margin-right: 8px;
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(26, 26, 26, 0.8);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #cccccc;
-  font-size: 16px;
-  margin-top: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.audio-icon:hover {
+  background-color: rgba(26, 26, 26, 0.9);
+  color: #ffffff;
+}
+
+.audio-icon.playing {
+  background-color: rgba(66, 184, 131, 0.8);
+  color: #ffffff;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* 确认对话框 */
@@ -740,5 +924,18 @@ onMounted(() => {
   40% { 
     transform: scale(1.0);
   }
+}
+
+.nav-placeholder {
+  height: 48px;
+  background-color: #000000;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
 }
 </style> 

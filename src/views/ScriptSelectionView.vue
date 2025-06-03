@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import ScriptSelection from '../components/ScriptSelection.vue';
-import BottomNav from '../components/BottomNav.vue';
 </script>
 
 <template>
   <div class="script-selection-view">
     <ScriptSelection />
-    <BottomNav />
   </div>
 </template>
 

@@ -45,7 +45,7 @@ defineEmits(['click']);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   margin: 0 auto;
 }
 
@@ -59,7 +59,7 @@ defineEmits(['click']);
 }
 
 .script-cover {
-  height: 180px;
+  height: 160px;
   position: relative;
   overflow: hidden;
 }
@@ -116,19 +116,25 @@ defineEmits(['click']);
 }
 
 .script-info {
-  padding: 15px;
+  padding: 12px 15px;
 }
 
 .script-title {
-  margin: 0 0 8px 0;
-  font-size: 20px;
+  margin: 0 0 6px 0;
+  font-size: 18px;
   color: white;
+  font-weight: 600;
 }
 
 .script-description {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   color: #bbb;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style> 
