@@ -76,7 +76,14 @@ const isGenerating = ref(false);
 const currentStreamingMessage = ref('');
 const currentAudioData = ref<Map<number, ArrayBuffer>>(new Map());
 const isPlaying = ref<Map<number, boolean>>(new Map());
-const autoPlayTTS = ref(false);
+const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
+const isGeneratingAudio = ref<Map<number, boolean>>(new Map());
+
+// 添加autoPlayTTS的监听器
+watch(autoPlayTTS, (newValue) => {
+  console.log('[Chat] autoPlayTTS状态改变:', newValue);
+  localStorage.setItem('autoPlayTTS', newValue.toString());
+});
 
 // 监听路由参数变化
 watch(() => route.params, async (newParams) => {
@@ -150,12 +157,29 @@ async function handleAIResponse(response: string) {
       isPlaying.value = new Map();
     }
     
+    // 缓存音频数据
     currentAudioData.value.set(messageId, audioData);
     isPlaying.value.set(messageId, false);
     
     // 如果启用了自动播放，则自动播放音频
     if (autoPlayTTS.value) {
       console.log('[Chat] 自动播放音频, messageId:', messageId);
+      // 停止其他正在播放的音频
+      for (const [id, playing] of isPlaying.value.entries()) {
+        if (playing) {
+          console.log('[Chat] 停止其他音频, messageId:', id);
+          ttsService.stopAudio();
+          isPlaying.value.set(id, false);
+        }
+      }
+      
+      // 设置播放结束回调
+      ttsService.onAudioEnded(() => {
+        console.log('[Chat] 音频播放结束, messageId:', messageId);
+        isPlaying.value.set(messageId, false);
+      });
+      
+      // 开始播放
       await ttsService.playAudio(audioData);
       isPlaying.value.set(messageId, true);
     }
@@ -172,12 +196,16 @@ async function handleAIResponse(response: string) {
 
 // 修改音频播放控制函数
 async function toggleAudioPlayback(messageId: number) {
-  console.log('[Chat] 切换音频播放状态:', {
-    messageId,
-    hasAudioData: !!currentAudioData.value.get(messageId),
-    audioDataSize: currentAudioData.value.get(messageId)?.byteLength,
-    isCurrentlyPlaying: isPlaying.value.get(messageId)
-  });
+  const message = messages.value.find(msg => msg.id === messageId);
+  if (!message) {
+    console.warn('[Chat] 未找到消息:', messageId);
+    return;
+  }
+
+  // 检查消息是否还在生成中
+  if (isGenerating.value && messageId === messages.value[messages.value.length - 1].id) {
+    return;
+  }
 
   const audioData = currentAudioData.value.get(messageId);
   if (!audioData) {
@@ -190,11 +218,27 @@ async function toggleAudioPlayback(messageId: number) {
 
   try {
     if (isCurrentlyPlaying) {
-      console.log('[Chat] 停止播放音频:', messageId);
+      console.log('[Chat] 停止播放音频, messageId:', messageId);
       ttsService.stopAudio();
       isPlaying.value.set(messageId, false);
     } else {
-      console.log('[Chat] 开始播放音频:', messageId);
+      // 停止其他正在播放的音频
+      for (const [id, playing] of isPlaying.value.entries()) {
+        if (playing && id !== messageId) {
+          console.log('[Chat] 停止其他音频, messageId:', id);
+          ttsService.stopAudio();
+          isPlaying.value.set(id, false);
+        }
+      }
+
+      console.log('[Chat] 开始播放音频, messageId:', messageId);
+      // 设置播放结束回调
+      ttsService.onAudioEnded(() => {
+        console.log('[Chat] 音频播放结束, messageId:', messageId);
+        isPlaying.value.set(messageId, false);
+      });
+      
+      // 开始播放
       await ttsService.playAudio(audioData);
       isPlaying.value.set(messageId, true);
     }
@@ -222,9 +266,12 @@ async function sendMessage(text: string) {
   
   isGenerating.value = true;
   currentStreamingMessage.value = '';
+  isGeneratingAudio.value.set(loadingMessageId, true);
   
   try {
-    await generateCharacterReply(
+    console.log('[Chat] 开始生成AI回复, autoPlayTTS:', autoPlayTTS.value);
+    
+    const response = await generateCharacterReply(
       currentCharacter.value.id,
       text,
       (chunk) => {
@@ -235,6 +282,70 @@ async function sendMessage(text: string) {
         }
       }
     );
+
+    // 消息生成完成后，生成TTS音频
+    console.log('[Chat] AI回复生成完成，准备生成TTS音频');
+    
+    try {
+      const ttsService = TTSService.getInstance();
+      console.log('[Chat] 开始生成TTS音频, messageId:', loadingMessageId);
+      
+      const audioData = await ttsService.generateAudio(currentStreamingMessage.value, currentCharacter.value);
+      
+      if (!audioData || audioData.byteLength === 0) {
+        throw new Error('生成的音频数据为空');
+      }
+      
+      console.log('[Chat] TTS音频生成成功:', {
+        messageId: loadingMessageId,
+        audioDataSize: audioData.byteLength,
+        hasAudioData: !!audioData
+      });
+      
+      // 确保在设置数据之前先初始化Map
+      if (!currentAudioData.value) {
+        currentAudioData.value = new Map();
+      }
+      if (!isPlaying.value) {
+        isPlaying.value = new Map();
+      }
+      
+      currentAudioData.value.set(loadingMessageId, audioData);
+      isPlaying.value.set(loadingMessageId, false);
+      
+      // 如果启用了自动播放，则自动播放音频
+      if (autoPlayTTS.value) {
+        console.log('[Chat] 自动播放音频, messageId:', loadingMessageId);
+        // 停止其他正在播放的音频
+        for (const [id, playing] of isPlaying.value.entries()) {
+          if (playing) {
+            console.log('[Chat] 停止其他音频, messageId:', id);
+            ttsService.stopAudio();
+            isPlaying.value.set(id, false);
+          }
+        }
+        
+        // 设置播放结束回调
+        ttsService.onAudioEnded(() => {
+          console.log('[Chat] 音频播放结束, messageId:', loadingMessageId);
+          isPlaying.value.set(loadingMessageId, false);
+        });
+        
+        // 开始播放
+        await ttsService.playAudio(audioData);
+        isPlaying.value.set(loadingMessageId, true);
+      } else {
+        console.log('[Chat] 自动播放已禁用，跳过音频播放');
+      }
+    } catch (error) {
+      console.error('[Chat] TTS生成失败:', error);
+      messages.value.push({
+        id: Date.now(),
+        content: '语音生成失败，请重试',
+        isUser: false,
+        hasAudio: false
+      });
+    }
   } catch (error) {
     console.error('获取AI回复失败:', error);
     // 移除加载消息
@@ -249,6 +360,7 @@ async function sendMessage(text: string) {
   } finally {
     isGenerating.value = false;
     currentStreamingMessage.value = '';
+    isGeneratingAudio.value.set(loadingMessageId, false);
   }
   
   updateProgress();
@@ -329,6 +441,29 @@ function handleModelChange(model: AIModel) {
   console.log(`模型已切换到: ${model}`);
 }
 
+function handleAutoPlayChange(value: boolean) {
+  console.log('[Chat] 自动播放设置改变:', value);
+  autoPlayTTS.value = value;
+  localStorage.setItem('autoPlayTTS', value.toString());
+  
+  // 如果启用了自动播放，尝试播放当前消息的音频
+  if (value && messages.value.length > 0) {
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (!lastMessage.isUser && lastMessage.hasAudio) {
+      const audioData = currentAudioData.value.get(lastMessage.id);
+      if (audioData) {
+        console.log('[Chat] 自动播放当前消息音频');
+        const ttsService = TTSService.getInstance();
+        ttsService.playAudio(audioData).then(() => {
+          isPlaying.value.set(lastMessage.id, true);
+        }).catch(error => {
+          console.error('[Chat] 自动播放音频失败:', error);
+        });
+      }
+    }
+  }
+}
+
 async function testApiConnection() {
   try {
     const testMessage = "测试消息，请简短回复";
@@ -399,10 +534,12 @@ onMounted(() => {
         :is-collapsed="isCollapsed"
         :has-dynamic-background="hasDynamicBackground"
         :is-dynamic-background="isDynamicBackground"
+        :autoPlayTTS="autoPlayTTS"
         @toggle-collapse="toggleCollapse"
         @toggle-background="toggleBackgroundType"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
+        @auto-play-changed="handleAutoPlayChange"
       />
       
       <!-- 情节信息区域 -->
@@ -455,8 +592,15 @@ onMounted(() => {
                 <div v-if="message.hasAudio && !message.isUser" 
                      class="audio-icon" 
                      @click="toggleAudioPlayback(message.id)"
-                     :class="{ 'playing': isPlaying.get(message.id) }">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                     :class="{ 
+                       'playing': isPlaying.get(message.id),
+                       'generating': isGeneratingAudio.get(message.id)
+                     }">
+                  <svg v-if="isGeneratingAudio.get(message.id)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                    <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/>
+                    <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                  </svg>
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
                     <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 11-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />
                     <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
                   </svg>
@@ -810,6 +954,13 @@ onMounted(() => {
   animation: pulse 1.5s infinite;
 }
 
+.audio-icon.generating {
+  background-color: rgba(66, 184, 131, 0.4);
+  color: #ffffff;
+  cursor: not-allowed;
+  animation: spin 1s linear infinite;
+}
+
 @keyframes pulse {
   0% {
     transform: scale(1);
@@ -819,6 +970,15 @@ onMounted(() => {
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

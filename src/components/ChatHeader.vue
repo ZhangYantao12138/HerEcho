@@ -25,6 +25,7 @@ const props = defineProps<{
   isCollapsed: boolean;
   hasDynamicBackground: boolean;
   isDynamicBackground: boolean;
+  autoPlayTTS: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -33,6 +34,7 @@ const emit = defineEmits<{
   (e: 'test-api'): void;
   (e: 'model-changed', model: AIModel): void;
   (e: 'change-viewpoint', viewpoint: ViewpointRelation): void;
+  (e: 'auto-play-changed', value: boolean): void;
 }>();
 
 const showCharacterList = ref(false);
@@ -40,7 +42,6 @@ const showSettingsMenu = ref(false);
 const characterSelectorRef = ref<HTMLElement | null>(null);
 const settingsMenuRef = ref<HTMLElement | null>(null);
 const showSettings = ref(false);
-const autoPlayTTS = ref(false);
 
 // 获取当前剧本ID
 const scriptId = computed(() => route.params.scriptId as string);
@@ -114,17 +115,8 @@ function handleTestApi() {
   showSettingsMenu.value = false;
 }
 
-// 保存设置到本地存储
-function saveSettings() {
-  localStorage.setItem('autoPlayTTS', autoPlayTTS.value.toString());
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
-  const savedAutoPlay = localStorage.getItem('autoPlayTTS');
-  if (savedAutoPlay !== null) {
-    autoPlayTTS.value = savedAutoPlay === 'true';
-  }
 });
 
 onUnmounted(() => {
@@ -212,12 +204,17 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <div class="settings-item">
-              <span>自动播放语音</span>
-              <label class="switch">
-                <input type="checkbox" v-model="autoPlayTTS" @change="saveSettings">
-                <span class="slider round"></span>
-              </label>
+            <div class="settings-section">
+              <h4>语音设置</h4>
+              <div class="settings-item">
+                <span>自动播放语音</span>
+                <label class="switch">
+                  <input type="checkbox" 
+                         :checked="props.autoPlayTTS"
+                         @change="emit('auto-play-changed', !props.autoPlayTTS)">
+                  <span class="slider round"></span>
+                </label>
+              </div>
             </div>
           </div>
         </Transition>

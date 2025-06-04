@@ -1,16 +1,43 @@
 import axios from 'axios';
+import type { AxiosProgressEvent } from 'axios';
 import type { Character } from '../types/character';
 
 interface TTSRequest {
     model: string;
     text: string;
-    voice_id: string;
+    voice_setting: {
+        voice_id: string;
+        speed: number;
+        vol: number;
+        pitch: number;
+    };
     stream: boolean;
+    audio_setting: {
+        sample_rate: number;
+        bitrate: number;
+        format: string;
+        channel: number;
+    };
 }
 
 interface TTSResponse {
-    data?: {
-        audio?: string;
+    data: {
+        audio: string;
+        status: number;
+    };
+    extra_info?: {
+        audio_length: number;
+        audio_sample_rate: number;
+        audio_size: number;
+        audio_bitrate: number;
+        word_count: number;
+        invisible_character_ratio: number;
+        audio_format: string;
+        usage_characters: number;
+    };
+    base_resp: {
+        status_code: number;
+        status_msg: string;
     };
 }
 
@@ -24,26 +51,49 @@ export class TTSService {
     private currentAudioSource: AudioBufferSourceNode | null;
     private onEndedCallback: (() => void) | null;
     private headers: Record<string, string>;
+    private isGenerating: boolean;
 
     private constructor() {
-        this.baseUrl = import.meta.env.VITE_MINIMAX_API_URL || 'https://api.minimax.chat/v1/t2a_v2';
-        this.apiKey = import.meta.env.VITE_MINIMAX_API_KEY || '';
-        this.groupId = import.meta.env.VITE_MINIMAX_GROUP_ID || '';
+        // 从.env文件读取配置
+        this.baseUrl = import.meta.env.VITE_MINIMAX_API_URL;
+        this.apiKey = import.meta.env.VITE_MINIMAX_API_KEY;
+        this.groupId = import.meta.env.VITE_MINIMAX_GROUP_ID;
+
+        // 验证必要的环境变量
+        if (!this.baseUrl) {
+            console.error('[TTS] 错误: 未设置 VITE_MINIMAX_API_URL');
+            console.error('[TTS] 请在项目根目录创建 .env 文件并添加以下配置：');
+            console.error('VITE_MINIMAX_API_URL=https://api.minimax.chat/v1/t2a_v2');
+            throw new Error('TTS服务配置错误：未设置 VITE_MINIMAX_API_URL');
+        }
+        if (!this.apiKey) {
+            console.error('[TTS] 错误: 未设置 VITE_MINIMAX_API_KEY');
+            console.error('[TTS] 请在项目根目录创建 .env 文件并添加以下配置：');
+            console.error('VITE_MINIMAX_API_KEY=your_api_key_here');
+            throw new Error('TTS服务配置错误：未设置 VITE_MINIMAX_API_KEY');
+        }
+        if (!this.groupId) {
+            console.error('[TTS] 错误: 未设置 VITE_MINIMAX_GROUP_ID');
+            console.error('[TTS] 请在项目根目录创建 .env 文件并添加以下配置：');
+            console.error('VITE_MINIMAX_GROUP_ID=your_group_id_here');
+            throw new Error('TTS服务配置错误：未设置 VITE_MINIMAX_GROUP_ID');
+        }
+
         this.audioCache = new Map();
         this.audioContext = null;
         this.currentAudioSource = null;
         this.onEndedCallback = null;
+        this.isGenerating = false;
         this.headers = {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
         };
 
-        if (!this.apiKey) {
-            console.error('[TTS] 错误: 未设置 MINIMAX_API_KEY');
-        }
-        if (!this.groupId) {
-            console.error('[TTS] 错误: 未设置 MINIMAX_GROUP_ID');
-        }
+        console.log('[TTS] 服务初始化完成:', {
+            baseUrl: this.baseUrl,
+            groupId: this.groupId,
+            hasApiKey: !!this.apiKey
+        });
     }
 
     public static getInstance(): TTSService {
@@ -53,21 +103,34 @@ export class TTSService {
         return TTSService.instance;
     }
 
+    private processText(text: string): string {
+        // 使用正则表达式匹配括号中的内容
+        return text.replace(/\([^)]*\)/g, '，');
+    }
+
     private buildTTSRequest(text: string, character: Character): TTSRequest {
-        console.log('[TTS] 构建请求:', {
-            text: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
-            characterId: character.id,
-            characterName: character.name
-        });
+        // 处理文本，将括号内容替换为停顿
+        const processedText = this.processText(text);
 
         const request: TTSRequest = {
-            model: 'speech-1',
-            text,
-            voice_id: character.voiceSettings.voice_id,
-            stream: true
+            model: 'speech-02-turbo',
+            text: processedText,
+            voice_setting: {
+                voice_id: character.voiceSettings.voice_id,
+                speed: character.voiceSettings.speed || 1.0,
+                vol: character.voiceSettings.vol || 1.0,
+                pitch: character.voiceSettings.pitch || 0
+            },
+            stream: true,
+            audio_setting: {
+                sample_rate: 32000,
+                bitrate: 128000,
+                format: 'mp3',
+                channel: 1
+            }
         };
 
-        console.log('[TTS] 请求参数:', request);
+        console.log('[TTS] 请求参数:', JSON.stringify(request, null, 2));
         return request;
     }
 
@@ -75,30 +138,128 @@ export class TTSService {
         console.log('[TTS] 开始流式TTS请求');
 
         const request = this.buildTTSRequest(text, character);
-        const url = `${this.baseUrl}?GroupId=${this.groupId}`;
+        const url = new URL(this.baseUrl);
+        url.searchParams.append('GroupId', this.groupId);
 
-        console.log('[TTS] 请求URL:', url);
+        console.log('[TTS] 请求URL:', url.toString());
 
         try {
-            const response = await axios.post(url, request, {
+            const response = await axios.post(url.toString(), request, {
                 headers: this.headers,
-                responseType: 'arraybuffer'
+                responseType: 'text',
+                onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
+                    console.log('[TTS] 下载进度:', {
+                        loaded: progressEvent.loaded,
+                        total: progressEvent.total
+                    });
+                }
             });
 
-            console.log('[TTS] 收到响应:', {
-                status: response.status,
-                contentType: response.headers['content-type'],
-                dataSize: response.data.byteLength
+            console.log('[TTS] 完整响应数据:', response.data);
+
+            if (!response.data) {
+                throw new Error('响应数据为空');
+            }
+
+            // 检查响应是否为错误信息
+            try {
+                const errorResponse = JSON.parse(response.data);
+                if (errorResponse.base_resp && errorResponse.base_resp.status_code !== 0) {
+                    const errorMsg = `API错误 (${errorResponse.base_resp.status_code}): ${errorResponse.base_resp.status_msg}`;
+                    console.error('[TTS]', errorMsg);
+                    if (errorResponse.base_resp.status_code === 1004) {
+                        console.error('[TTS] 请检查以下配置：');
+                        console.error('1. VITE_MINIMAX_API_KEY 是否正确');
+                        console.error('2. VITE_MINIMAX_GROUP_ID 是否与 API Key 匹配');
+                        console.error('3. API Key 是否有权限访问该 Group');
+                        console.error('当前配置：', {
+                            groupId: this.groupId,
+                            hasApiKey: !!this.apiKey,
+                            url: url.toString()
+                        });
+                    }
+                    throw new Error(errorMsg);
+                }
+            } catch (parseError) {
+                // 如果不是 JSON 格式，继续处理
+            }
+
+            const lines = response.data.split('\n').filter((line: string) => line.trim());
+            console.log('[TTS] 解析后的行数:', lines.length);
+
+            if (lines.length === 0) {
+                throw new Error('响应数据格式错误：没有有效的行数据');
+            }
+
+            const audioChunks: Uint8Array[] = [];
+            let isFirstChunk = true;
+
+            for (const line of lines) {
+                if (line.startsWith('data:')) {
+                    try {
+                        const jsonData = JSON.parse(line.slice(5)) as TTSResponse;
+                        console.log('[TTS] 解析的数据块:', jsonData);
+
+                        if (jsonData.base_resp.status_code !== 0) {
+                            throw new Error(`API错误: ${jsonData.base_resp.status_msg}`);
+                        }
+
+                        if (jsonData.data.audio) {
+                            // 使用 Uint8Array 替代 Buffer
+                            const hexString = jsonData.data.audio;
+                            const audioData = new Uint8Array(hexString.length / 2);
+                            for (let i = 0; i < hexString.length; i += 2) {
+                                audioData[i / 2] = parseInt(hexString.substr(i, 2), 16);
+                            }
+                            audioChunks.push(audioData);
+
+                            if (isFirstChunk) {
+                                console.log('[TTS] 收到第一个音频块:', {
+                                    size: audioData.length,
+                                    status: jsonData.data.status
+                                });
+                                isFirstChunk = false;
+                            }
+                        }
+
+                        if (jsonData.data.status === 2) {
+                            console.log('[TTS] 收到最后一个音频块');
+                            break;
+                        }
+                    } catch (error) {
+                        console.error('[TTS] 解析响应数据失败:', error, '原始数据:', line);
+                        throw error;
+                    }
+                }
+            }
+
+            if (audioChunks.length === 0) {
+                console.error('[TTS] 未收到任何音频数据，原始响应:', response.data);
+                throw new Error('未收到任何音频数据');
+            }
+
+            // 合并所有音频块
+            const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+            const combinedAudio = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of audioChunks) {
+                combinedAudio.set(chunk, offset);
+                offset += chunk.length;
+            }
+
+            console.log('[TTS] 音频数据合并完成:', {
+                totalChunks: audioChunks.length,
+                totalSize: combinedAudio.length
             });
 
-            return response.data;
+            return combinedAudio.buffer;
         } catch (error) {
-            console.error('[TTS] 请求失败:', error);
             if (axios.isAxiosError(error)) {
-                console.error('[TTS] 错误详情:', {
+                console.error('[TTS] API错误:', {
                     status: error.response?.status,
                     statusText: error.response?.statusText,
-                    data: error.response?.data
+                    data: error.response?.data,
+                    message: error.message
                 });
             }
             throw error;
@@ -106,23 +267,14 @@ export class TTSService {
     }
 
     public async generateAudio(text: string, character: Character): Promise<ArrayBuffer> {
-        console.log('[TTS] 开始生成音频');
-
         const cacheKey = `${character.id}_${text}`;
-        console.log('[TTS] 缓存键:', cacheKey);
 
         if (this.audioCache.has(cacheKey)) {
-            console.log('[TTS] 使用缓存音频');
             return this.audioCache.get(cacheKey)!;
         }
 
         try {
             const audioData = await this.streamTTS(text, character);
-            console.log('[TTS] 音频生成成功:', {
-                size: audioData.byteLength,
-                cacheKey
-            });
-
             this.audioCache.set(cacheKey, audioData);
             return audioData;
         } catch (error) {
@@ -132,58 +284,82 @@ export class TTSService {
     }
 
     public async playAudio(audioData: ArrayBuffer): Promise<void> {
-        console.log('[TTS] 开始播放音频:', {
-            dataSize: audioData.byteLength
-        });
-
         try {
             if (!this.audioContext) {
-                console.log('[TTS] 创建新的AudioContext');
                 this.audioContext = new AudioContext();
             }
 
-            const audioBuffer = await this.audioContext.decodeAudioData(audioData);
+            console.log('[TTS] 开始解码音频数据:', {
+                dataSize: audioData.byteLength,
+                sampleRate: this.audioContext.sampleRate
+            });
+
+            // 停止当前正在播放的音频
+            if (this.currentAudioSource) {
+                try {
+                    this.currentAudioSource.stop();
+                    this.currentAudioSource.disconnect();
+                } catch (error) {
+                    console.warn('[TTS] 停止当前音频失败:', error);
+                }
+                this.currentAudioSource = null;
+            }
+
+            const audioBuffer = await this.audioContext.decodeAudioData(audioData.slice(0));
             console.log('[TTS] 音频解码成功:', {
                 duration: audioBuffer.duration,
                 numberOfChannels: audioBuffer.numberOfChannels,
                 sampleRate: audioBuffer.sampleRate
             });
 
-            if (this.currentAudioSource) {
-                console.log('[TTS] 停止当前播放的音频');
-                this.currentAudioSource.stop();
-            }
+            // 创建新的音频源
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
 
-            this.currentAudioSource = this.audioContext.createBufferSource();
-            this.currentAudioSource.buffer = audioBuffer;
-            this.currentAudioSource.connect(this.audioContext.destination);
-
-            this.currentAudioSource.onended = () => {
+            // 设置结束回调
+            source.onended = () => {
                 console.log('[TTS] 音频播放结束');
-                if (this.onEndedCallback) {
-                    this.onEndedCallback();
+                if (this.currentAudioSource === source) {
+                    source.disconnect();
+                    this.currentAudioSource = null;
+                    if (this.onEndedCallback) {
+                        this.onEndedCallback();
+                    }
                 }
             };
 
-            this.currentAudioSource.start();
+            // 保存当前音频源并开始播放
+            this.currentAudioSource = source;
+            source.start();
             console.log('[TTS] 音频开始播放');
         } catch (error) {
             console.error('[TTS] 音频播放失败:', error);
+            if (this.currentAudioSource) {
+                this.currentAudioSource.disconnect();
+                this.currentAudioSource = null;
+            }
+            if (error instanceof Error && error.name === 'EncodingError') {
+                console.error('[TTS] 音频数据详情:', {
+                    size: audioData.byteLength,
+                    firstBytes: new Uint8Array(audioData.slice(0, 16))
+                });
+            }
             throw error;
         }
     }
 
     public stopAudio(): void {
         console.log('[TTS] 停止音频播放');
-
         if (this.currentAudioSource) {
             try {
                 this.currentAudioSource.stop();
+                this.currentAudioSource.disconnect();
+                this.currentAudioSource = null;
                 console.log('[TTS] 音频已停止');
             } catch (error) {
                 console.error('[TTS] 停止音频失败:', error);
             }
-            this.currentAudioSource = null;
         }
     }
 

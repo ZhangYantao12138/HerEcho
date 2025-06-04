@@ -292,7 +292,7 @@ async function callAIAPI(
                 if (done) break;
 
                 const chunk = decoder.decode(value);
-                console.log('[API响应] 收到chunk:', chunk);
+                console.log('[API响应] 收到chunk，长度为', chunk.length);
 
                 const lines = chunk.split('\n').filter(line => line.trim() !== '');
 
@@ -308,7 +308,7 @@ async function callAIAPI(
                             const parsed = JSON.parse(data);
                             const content = parsed.choices[0]?.delta?.content || '';
                             if (content) {
-                                console.log('[API响应] 解析到content:', content);
+                                // console.log('[API响应] 解析到content:', content);
                                 fullResponse += content;
                                 onStream(content);
                             }
