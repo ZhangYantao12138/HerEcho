@@ -144,6 +144,7 @@ function adjustVolume(newVolume: number) {
   width: 60px;
   height: 4px;
   -webkit-appearance: none;
+  appearance: none;
   background: #ddd;
   border-radius: 2px;
   outline: none;
