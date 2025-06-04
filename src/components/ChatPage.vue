@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch, nextTick, provide, type Ref } from 'vue';
 // 解决方案一：选择 main 分支的图标导入
-import { RiDeleteBin2Line } from '@remixicon/vue';
+import { RiDeleteBin2Line, RiArrowUpSLine } from '@remixicon/vue';
 // import { Icon } from '@iconify/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
@@ -121,6 +121,16 @@ const showClearConfirm = ref(false); // 添加清除确认对话框状态
 
 // 使用侧边栏 store
 const sidebarStore = useSidebarStore();
+
+// 添加 autoPlayTTS 状态
+const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
+
+// 处理自动播放设置变化
+function handleAutoPlayChange(value: boolean) {
+  console.log('自动播放设置改变:', value);
+  autoPlayTTS.value = value;
+  localStorage.setItem('autoPlayTTS', value.toString());
+}
 
 // 定义 testApiConnection 函数
 const testApiConnection = async () => {
@@ -301,11 +311,13 @@ onMounted(() => {
         :isCollapsed="isCollapsed"
         :hasDynamicBackground="true"
         :isDynamicBackground="true"
+        :autoPlayTTS="autoPlayTTS"
         @test-api="testApiConnection"
         @change-viewpoint="handleViewpointChange"
         @model-changed="handleModelChange"
         @toggle-collapse="toggleCollapse"
         @toggle-background="() => {}"
+        @auto-play-changed="handleAutoPlayChange"
       />
 
       <ChatSidebar
