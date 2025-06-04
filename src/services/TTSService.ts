@@ -296,7 +296,12 @@ export class TTSService {
 
             // 停止当前正在播放的音频
             if (this.currentAudioSource) {
-                this.currentAudioSource.stop();
+                try {
+                    this.currentAudioSource.stop();
+                    this.currentAudioSource.disconnect();
+                } catch (error) {
+                    console.warn('[TTS] 停止当前音频失败:', error);
+                }
                 this.currentAudioSource = null;
             }
 
@@ -307,21 +312,33 @@ export class TTSService {
                 sampleRate: audioBuffer.sampleRate
             });
 
-            this.currentAudioSource = this.audioContext.createBufferSource();
-            this.currentAudioSource.buffer = audioBuffer;
-            this.currentAudioSource.connect(this.audioContext.destination);
+            // 创建新的音频源
+            const source = this.audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(this.audioContext.destination);
 
-            this.currentAudioSource.onended = () => {
+            // 设置结束回调
+            source.onended = () => {
                 console.log('[TTS] 音频播放结束');
-                if (this.onEndedCallback) {
-                    this.onEndedCallback();
+                if (this.currentAudioSource === source) {
+                    source.disconnect();
+                    this.currentAudioSource = null;
+                    if (this.onEndedCallback) {
+                        this.onEndedCallback();
+                    }
                 }
             };
 
-            this.currentAudioSource.start();
+            // 保存当前音频源并开始播放
+            this.currentAudioSource = source;
+            source.start();
             console.log('[TTS] 音频开始播放');
         } catch (error) {
             console.error('[TTS] 音频播放失败:', error);
+            if (this.currentAudioSource) {
+                this.currentAudioSource.disconnect();
+                this.currentAudioSource = null;
+            }
             if (error instanceof Error && error.name === 'EncodingError') {
                 console.error('[TTS] 音频数据详情:', {
                     size: audioData.byteLength,
@@ -337,6 +354,7 @@ export class TTSService {
         if (this.currentAudioSource) {
             try {
                 this.currentAudioSource.stop();
+                this.currentAudioSource.disconnect();
                 this.currentAudioSource = null;
                 console.log('[TTS] 音频已停止');
             } catch (error) {

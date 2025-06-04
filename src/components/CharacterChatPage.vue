@@ -164,6 +164,22 @@ async function handleAIResponse(response: string) {
     // 如果启用了自动播放，则自动播放音频
     if (autoPlayTTS.value) {
       console.log('[Chat] 自动播放音频, messageId:', messageId);
+      // 停止其他正在播放的音频
+      for (const [id, playing] of isPlaying.value.entries()) {
+        if (playing) {
+          console.log('[Chat] 停止其他音频, messageId:', id);
+          ttsService.stopAudio();
+          isPlaying.value.set(id, false);
+        }
+      }
+      
+      // 设置播放结束回调
+      ttsService.onAudioEnded(() => {
+        console.log('[Chat] 音频播放结束, messageId:', messageId);
+        isPlaying.value.set(messageId, false);
+      });
+      
+      // 开始播放
       await ttsService.playAudio(audioData);
       isPlaying.value.set(messageId, true);
     }
@@ -188,7 +204,7 @@ async function toggleAudioPlayback(messageId: number) {
 
   // 检查消息是否还在生成中
   if (isGenerating.value && messageId === messages.value[messages.value.length - 1].id) {
-    return; // 直接返回，不显示提示，因为UI已经显示加载状态
+    return;
   }
 
   const audioData = currentAudioData.value.get(messageId);
@@ -202,9 +218,27 @@ async function toggleAudioPlayback(messageId: number) {
 
   try {
     if (isCurrentlyPlaying) {
+      console.log('[Chat] 停止播放音频, messageId:', messageId);
       ttsService.stopAudio();
       isPlaying.value.set(messageId, false);
     } else {
+      // 停止其他正在播放的音频
+      for (const [id, playing] of isPlaying.value.entries()) {
+        if (playing && id !== messageId) {
+          console.log('[Chat] 停止其他音频, messageId:', id);
+          ttsService.stopAudio();
+          isPlaying.value.set(id, false);
+        }
+      }
+
+      console.log('[Chat] 开始播放音频, messageId:', messageId);
+      // 设置播放结束回调
+      ttsService.onAudioEnded(() => {
+        console.log('[Chat] 音频播放结束, messageId:', messageId);
+        isPlaying.value.set(messageId, false);
+      });
+      
+      // 开始播放
       await ttsService.playAudio(audioData);
       isPlaying.value.set(messageId, true);
     }
@@ -282,6 +316,22 @@ async function sendMessage(text: string) {
       // 如果启用了自动播放，则自动播放音频
       if (autoPlayTTS.value) {
         console.log('[Chat] 自动播放音频, messageId:', loadingMessageId);
+        // 停止其他正在播放的音频
+        for (const [id, playing] of isPlaying.value.entries()) {
+          if (playing) {
+            console.log('[Chat] 停止其他音频, messageId:', id);
+            ttsService.stopAudio();
+            isPlaying.value.set(id, false);
+          }
+        }
+        
+        // 设置播放结束回调
+        ttsService.onAudioEnded(() => {
+          console.log('[Chat] 音频播放结束, messageId:', loadingMessageId);
+          isPlaying.value.set(loadingMessageId, false);
+        });
+        
+        // 开始播放
         await ttsService.playAudio(audioData);
         isPlaying.value.set(loadingMessageId, true);
       } else {
