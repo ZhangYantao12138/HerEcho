@@ -103,10 +103,18 @@ export class TTSService {
         return TTSService.instance;
     }
 
+    private processText(text: string): string {
+        // 使用正则表达式匹配括号中的内容
+        return text.replace(/\([^)]*\)/g, '，');
+    }
+
     private buildTTSRequest(text: string, character: Character): TTSRequest {
+        // 处理文本，将括号内容替换为停顿
+        const processedText = this.processText(text);
+
         const request: TTSRequest = {
             model: 'speech-02-turbo',
-            text,
+            text: processedText,
             voice_setting: {
                 voice_id: character.voiceSettings.voice_id,
                 speed: character.voiceSettings.speed || 1.0,

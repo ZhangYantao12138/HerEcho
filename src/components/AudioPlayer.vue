@@ -45,6 +45,7 @@ async function playAudio() {
     
     audioSource.value.onended = () => {
       emit('ended');
+      audioSource.value = null;
     };
     
     audioSource.value.start(0);

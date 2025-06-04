@@ -157,6 +157,7 @@ async function handleAIResponse(response: string) {
       isPlaying.value = new Map();
     }
     
+    // 缓存音频数据
     currentAudioData.value.set(messageId, audioData);
     isPlaying.value.set(messageId, false);
     
