@@ -26,6 +26,7 @@ const props = defineProps<{
   hasDynamicBackground: boolean;
   isDynamicBackground: boolean;
   autoPlayTTS: boolean;
+  isStoryMode: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +36,7 @@ const emit = defineEmits<{
   (e: 'model-changed', model: AIModel): void;
   (e: 'change-viewpoint', viewpoint: ViewpointRelation): void;
   (e: 'auto-play-changed', value: boolean): void;
+  (e: 'story-mode-changed', value: boolean): void;
 }>();
 
 const showCharacterList = ref(false);
@@ -212,6 +214,19 @@ onUnmounted(() => {
                   <input type="checkbox" 
                          :checked="props.autoPlayTTS"
                          @change="emit('auto-play-changed', !props.autoPlayTTS)">
+                  <span class="slider round"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <h4>剧情设置</h4>
+              <div class="settings-item">
+                <span>剧情对话模式</span>
+                <label class="switch">
+                  <input type="checkbox" 
+                         :checked="props.isStoryMode"
+                         @change="emit('story-mode-changed', !props.isStoryMode)">
                   <span class="slider round"></span>
                 </label>
               </div>

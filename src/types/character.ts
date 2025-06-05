@@ -38,8 +38,8 @@ export interface Character {
     book_id: string;
     name: string;
     avatar: string;
-    backgroundDescription: string;
-    systemPrompt: string;
+    backgroundDescription?: string;
+    systemPrompt?: string;
     backgroundImage: string;
     voiceSettings: VoiceSettings;
     sceneInfo: {
@@ -52,5 +52,5 @@ export interface Character {
     personality?: string;
     relationships?: string;
     currentState?: string;
-    storyMode?: StoryMode;  // 剧情模式配置
+    storyMode: StoryMode;  // 剧情模式配置
 } 

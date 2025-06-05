@@ -43,7 +43,7 @@ let currentCharacter: Character = getDefaultCharacter();
 let chatHistory: ChatMessage[] = [
     {
         role: 'system',
-        content: currentCharacter.systemPrompt
+        content: currentCharacter.systemPrompt || ''
     }
 ];
 
@@ -62,10 +62,55 @@ async function getDbService(): Promise<DatabaseService> {
     return dbServiceInstance;
 }
 
-/**
- * 设置当前角色
- * @param character 角色对象
- */
+// 添加剧情模式状态管理
+export interface StoryState {
+    isStoryMode: boolean;
+    currentProgress: number;
+    canAdvance: boolean;
+}
+
+export let storyState: StoryState = {
+    isStoryMode: false,
+    currentProgress: 0,
+    canAdvance: false
+};
+
+// 添加剧情模式状态更新方法
+function updateStoryState(newState: Partial<StoryState>) {
+    storyState = {
+        ...storyState,
+        ...newState
+    };
+    console.log('[Story] 剧情状态更新:', storyState);
+}
+
+// 添加提示词组合函数
+function combinePrompts(systemPrompt: string, stagePrompt: string): string {
+    return `${systemPrompt}\n\n${stagePrompt}`;
+}
+
+// 修改生成系统提示词的方法
+function generateSystemPrompt(character: Character): string {
+    if (!storyState.isStoryMode) {
+        // 日常模式：使用stageId为0的配置
+        const dailyStage = character.storyMode.stages.find(stage => stage.stageId === 0);
+        if (!dailyStage) {
+            throw new Error(`角色 ${character.name} 缺少日常模式配置`);
+        }
+        return combinePrompts(dailyStage.systemPrompt, dailyStage.stagePrompt);
+    }
+
+    // 剧情模式：使用当前阶段的配置
+    const currentStage = character.storyMode.stages.find(
+        stage => stage.stageId === character.storyMode.currentStage
+    );
+    if (!currentStage) {
+        throw new Error(`角色 ${character.name} 缺少剧情阶段 ${character.storyMode.currentStage} 的配置`);
+    }
+    return combinePrompts(currentStage.systemPrompt, currentStage.stagePrompt);
+}
+
+// 修改设置当前角色的方法
 export function setCurrentCharacter(character: Character): void {
     // 记录角色使用次数
     if (character.id) {
@@ -75,7 +120,70 @@ export function setCurrentCharacter(character: Character): void {
     }
 
     currentCharacter = character;
+    // 重置剧情状态
+    updateStoryState({
+        isStoryMode: character.storyMode.enabled,
+        currentProgress: 0,
+        canAdvance: false
+    });
     clearChatHistory();
+}
+
+// 修改剧情模式切换方法
+export function toggleStoryMode(enabled: boolean): void {
+    if (!currentCharacter) return;
+
+    updateStoryState({
+        isStoryMode: enabled,
+        currentProgress: 0,
+        canAdvance: false
+    });
+    currentCharacter.storyMode.enabled = enabled;
+
+    // 更新系统提示词
+    clearChatHistory();
+}
+
+// 修改进度更新方法
+export function updateProgress(): void {
+    if (!currentCharacter || !storyState.isStoryMode) return;
+
+    updateStoryState({
+        currentProgress: storyState.currentProgress + 1
+    });
+    checkStageAdvancement();
+}
+
+// 修改剧情阶段检查方法
+function checkStageAdvancement(): void {
+    if (!currentCharacter || !storyState.isStoryMode) return;
+
+    const currentStage = currentCharacter.storyMode.stages.find(
+        stage => stage.stageId === currentCharacter.storyMode.currentStage
+    );
+
+    if (currentStage && storyState.currentProgress >= currentStage.requiredProgress) {
+        updateStoryState({
+            canAdvance: true
+        });
+    }
+}
+
+// 修改剧情推进方法
+export function advanceStory(): void {
+    if (!currentCharacter || !storyState.isStoryMode || !storyState.canAdvance) return;
+
+    const nextStageId = currentCharacter.storyMode.currentStage + 1;
+    const nextStage = currentCharacter.storyMode.stages.find(stage => stage.stageId === nextStageId);
+
+    if (nextStage) {
+        currentCharacter.storyMode.currentStage = nextStageId;
+        updateStoryState({
+            currentProgress: 0,
+            canAdvance: false
+        });
+        clearChatHistory();
+    }
 }
 
 /**
@@ -428,6 +536,12 @@ export async function generateCharacterReply(
             }
         }
 
+        // 更新系统提示词
+        chatHistory[0] = {
+            role: 'system',
+            content: generateSystemPrompt(character)
+        };
+
         console.log(`发送请求到${modelConfigs[currentModel].name} API (尝试 ${retryCount + 1}/${MAX_RETRY_ATTEMPTS + 1})`);
 
         // 调用API
@@ -602,7 +716,7 @@ export function clearChatHistory(): void {
     chatHistory = [
         {
             role: 'system',
-            content: currentCharacter.systemPrompt
+            content: currentCharacter.systemPrompt || ''
         }
     ];
     // 重置上次使用的回退回复索引

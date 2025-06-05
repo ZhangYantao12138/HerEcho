@@ -5,7 +5,16 @@ import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
-import { clearChatHistory, generateCharacterReply, setCurrentCharacter, generatePlayerReply } from '../services/chatService';
+import { 
+  clearChatHistory, 
+  generateCharacterReply, 
+  setCurrentCharacter, 
+  generatePlayerReply,
+  toggleStoryMode,
+  advanceStory,
+  updateProgress as updateStoryProgress,
+  storyState
+} from '../services/chatService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
 import type { AIModel } from '../types/chat';
@@ -78,6 +87,22 @@ const currentAudioData = ref<Map<number, ArrayBuffer>>(new Map());
 const isPlaying = ref<Map<number, boolean>>(new Map());
 const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
 const isGeneratingAudio = ref<Map<number, boolean>>(new Map());
+
+// 添加剧情模式相关的状态
+const isStoryMode = ref(currentCharacter.value.storyMode.enabled);
+const canAdvanceStory = ref(false);
+
+// 监听storyState变化
+watch(() => storyState, (newState) => {
+  isStoryMode.value = newState.isStoryMode;
+  canAdvanceStory.value = newState.canAdvance;
+}, { deep: true });
+
+// 监听角色变化时更新剧情模式状态
+watch(() => currentCharacter.value, (newCharacter) => {
+  isStoryMode.value = newCharacter.storyMode.enabled;
+  canAdvanceStory.value = storyState.canAdvance;
+}, { deep: true });
 
 // 添加autoPlayTTS的监听器
 watch(autoPlayTTS, (newValue) => {
@@ -396,8 +421,13 @@ function addUserMessage(text: string) {
 }
 
 function updateProgress() {
-  if (progress.value < 95) {
-    progress.value += 5;
+  if (isStoryMode.value) {
+    updateStoryProgress();
+    canAdvanceStory.value = storyState.canAdvance;
+  } else {
+    if (progress.value < 95) {
+      progress.value += 5;
+    }
   }
 }
 
@@ -496,6 +526,21 @@ function toggleBackgroundType() {
   }
 }
 
+// 添加剧情模式切换处理函数
+function handleStoryModeChange(value: boolean) {
+  console.log('[Chat] 剧情模式设置改变:', value);
+  isStoryMode.value = value;
+  toggleStoryMode(value);
+}
+
+// 添加剧情推进处理函数
+function handleAdvanceStory() {
+  if (canAdvanceStory.value) {
+    advanceStory();
+    canAdvanceStory.value = false;
+  }
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -535,24 +580,45 @@ onMounted(() => {
         :has-dynamic-background="hasDynamicBackground"
         :is-dynamic-background="isDynamicBackground"
         :autoPlayTTS="autoPlayTTS"
+        :is-story-mode="isStoryMode"
         @toggle-collapse="toggleCollapse"
         @toggle-background="toggleBackgroundType"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
         @auto-play-changed="handleAutoPlayChange"
+        @story-mode-changed="handleStoryModeChange"
       />
       
-      <!-- 情节信息区域 -->
+      <!-- 修改情节信息区域 -->
       <div class="scene-container" v-if="!isCollapsed">
         <div class="scene-info">
-          <div class="scene-text">情节：{{ currentCharacter.sceneInfo.title }}</div>
-          <div class="scene-stage">{{ currentCharacter.sceneInfo.stage }}</div>
+          <div class="scene-text">
+            {{ isStoryMode ? 
+              `剧情：${currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage].stageName}` :
+              `剧情：${currentCharacter.storyMode.stages[0].stageName}`
+            }}
+          </div>
+          <div class="scene-stage">
+            {{ isStoryMode ?
+              `阶段：${currentCharacter.storyMode.currentStage + 1}/${currentCharacter.storyMode.stages.length}` :
+              '日常对话'
+            }}
+          </div>
         </div>
         
         <div class="progress-section">
           <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+            <div class="progress-fill" :style="{ width: `${isStoryMode ? 
+              (storyState.currentProgress / currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage].requiredProgress * 100) : 
+              100}%` }"></div>
           </div>
+          <button 
+            v-if="isStoryMode && canAdvanceStory" 
+            class="advance-button"
+            @click="handleAdvanceStory"
+          >
+            推进剧情
+          </button>
         </div>
       </div>
       
@@ -1097,5 +1163,26 @@ onMounted(() => {
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
+}
+
+/* 添加推进按钮样式 */
+.advance-button {
+  background-color: #42b883;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.advance-button:hover {
+  background-color: #3aa876;
+}
+
+.advance-button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
 }
 </style> 
