@@ -76,7 +76,7 @@ export let storyState: StoryState = {
 };
 
 // 添加剧情模式状态更新方法
-function updateStoryState(newState: Partial<StoryState>) {
+export function updateStoryState(newState: Partial<StoryState>) {
     storyState = {
         ...storyState,
         ...newState
@@ -132,6 +132,13 @@ export function setCurrentCharacter(character: Character): void {
 // 修改剧情模式切换方法
 export function toggleStoryMode(enabled: boolean): void {
     if (!currentCharacter) return;
+
+    // 新增：切换到剧情模式时，currentStage跳到1，切回日常时跳到0
+    if (enabled) {
+        currentCharacter.storyMode.currentStage = 1;
+    } else {
+        currentCharacter.storyMode.currentStage = 0;
+    }
 
     updateStoryState({
         isStoryMode: enabled,

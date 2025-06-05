@@ -8,12 +8,14 @@ import BottomNav from './BottomNav.vue';
 import { 
   clearChatHistory, 
   generateCharacterReply, 
+  generateAutoReplies, 
   setCurrentCharacter, 
   generatePlayerReply,
   toggleStoryMode,
   advanceStory,
   updateProgress as updateStoryProgress,
-  storyState
+  storyState,
+  updateStoryState
 } from '../services/chatService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
@@ -174,6 +176,50 @@ function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V) {
   });
 }
 
+// 新增：当前剧情阶段、是否最后阶段、进度百分比、推进按钮显示
+const currentStage = computed(() => {
+  return isStoryMode.value
+    ? currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]
+    : currentCharacter.value.storyMode.stages[0];
+});
+
+const isLastStage = computed(() => {
+  return isStoryMode.value &&
+    currentCharacter.value.storyMode.currentStage === currentCharacter.value.storyMode.stages.length - 1;
+});
+
+const progressPercent = computed(() => {
+  if (!isStoryMode.value) return 100;
+  const stage = currentStage.value;
+  if (!stage || stage.requiredProgress === 0) return 100;
+  return Math.min(100, Math.round(storyState.currentProgress / stage.requiredProgress * 100));
+});
+
+const showAdvanceButton = computed(() => {
+  if (!isStoryMode.value) return false;
+  const stage = currentStage.value;
+  if (!stage) return false;
+  if (isLastStage.value) return false;
+  if (stage.requiredProgress === 0) return false;
+  return storyState.currentProgress >= stage.requiredProgress;
+});
+
+// 监听剧情模式切换，刷新消息和进度
+watch(isStoryMode, (newVal) => {
+  messages.value = [
+    {
+      id: Date.now(),
+      content: `<div class="background-description">${currentStage.value?.systemPrompt || '暂无背景描述'}</div>`,
+      isUser: false,
+      hasAudio: false
+    },
+    ...(currentCharacter.value.initialMessages || [])
+  ];
+  // 可选：重置进度
+  // progress.value = currentCharacter.value.sceneInfo.progress;
+  scrollToBottom();
+});
+
 // 修改handleAIResponse函数
 async function handleAIResponse(response: string) {
   console.log('[DEBUG] handleAIResponse 开始执行');
@@ -243,6 +289,25 @@ async function handleAIResponse(response: string) {
       isUser: false,
       hasAudio: false
     });
+  }
+
+  // 更新剧情进度
+  if (isStoryMode.value && currentStage.value) {
+    console.log('[DEBUG] 更新剧情进度:', {
+      currentProgress: storyState.currentProgress,
+      requiredProgress: currentStage.value.requiredProgress
+    });
+    
+    // 更新进度
+    updateProgress();
+    
+    // 检查是否可以推进剧情
+    if (storyState.currentProgress >= currentStage.value.requiredProgress) {
+      console.log('[DEBUG] 可以推进剧情');
+      updateStoryState({
+        canAdvance: true
+      });
+    }
   }
 }
 
@@ -610,6 +675,17 @@ function handleAdvanceStory() {
   if (canAdvanceStory.value) {
     advanceStory();
     canAdvanceStory.value = false;
+    // 剧情推进后刷新消息列表，显示新阶段初始信息
+    messages.value = [
+      {
+        id: Date.now(),
+        content: `<div class="background-description">${currentStage.value?.systemPrompt || '暂无背景描述'}</div>`,
+        isUser: false,
+        hasAudio: false
+      },
+      ...(currentCharacter.value.initialMessages || [])
+    ];
+    scrollToBottom();
   }
 }
 
@@ -661,31 +737,19 @@ onMounted(() => {
         @story-mode-changed="handleStoryModeChange"
       />
       
-      <!-- 修改情节信息区域 -->
+      <!-- 只显示当前阶段名字和进度条 -->
       <div class="scene-container" v-if="!isCollapsed">
         <div class="scene-info">
           <div class="scene-text">
-            {{ isStoryMode ? 
-              `剧情：${currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage].stageName}` :
-              `剧情：${currentCharacter.storyMode.stages[0].stageName}`
-            }}
-          </div>
-          <div class="scene-stage">
-            {{ isStoryMode ?
-              `阶段：${currentCharacter.storyMode.currentStage + 1}/${currentCharacter.storyMode.stages.length}` :
-              '日常对话'
-            }}
+            {{ currentStage.stageName }}
           </div>
         </div>
-        
         <div class="progress-section">
           <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${isStoryMode ? 
-              (storyState.currentProgress / currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage].requiredProgress * 100) : 
-              100}%` }"></div>
+            <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
           </div>
           <button 
-            v-if="isStoryMode && canAdvanceStory" 
+            v-if="showAdvanceButton" 
             class="advance-button"
             @click="handleAdvanceStory"
           >
