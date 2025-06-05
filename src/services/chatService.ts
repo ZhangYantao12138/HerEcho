@@ -153,26 +153,70 @@ export function toggleStoryMode(enabled: boolean): void {
 
 // 修改进度更新方法
 export function updateProgress(): void {
-    if (!currentCharacter || !storyState.isStoryMode) return;
-
-    updateStoryState({
-        currentProgress: storyState.currentProgress + 1
+    console.log('[DEBUG] chatService.updateProgress 开始执行:', {
+        storyState,
+        currentCharacter: currentCharacter
     });
+
+    if (!storyState.isStoryMode || !currentCharacter) {
+        console.log('[DEBUG] 非剧情模式或无当前角色，直接返回');
+        return;
+    }
+
+    const currentStage = currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage];
+    console.log('[DEBUG] 当前阶段信息:', {
+        currentStage,
+        currentProgress: storyState.currentProgress,
+        requiredProgress: currentStage?.requiredProgress
+    });
+
+    if (!currentStage) {
+        console.log('[DEBUG] 无当前阶段信息，直接返回');
+        return;
+    }
+
+    // 增加进度
+    storyState.currentProgress += 1;
+    console.log('[DEBUG] 进度更新后:', {
+        currentProgress: storyState.currentProgress,
+        requiredProgress: currentStage.requiredProgress
+    });
+
+    // 检查是否可以推进到下一阶段
     checkStageAdvancement();
 }
 
-// 修改剧情阶段检查方法
 function checkStageAdvancement(): void {
-    if (!currentCharacter || !storyState.isStoryMode) return;
+    console.log('[DEBUG] checkStageAdvancement 开始执行:', {
+        storyState,
+        currentCharacter: currentCharacter
+    });
 
-    const currentStage = currentCharacter.storyMode.stages.find(
-        stage => stage.stageId === currentCharacter.storyMode.currentStage
-    );
+    if (!currentCharacter) {
+        console.log('[DEBUG] 无当前角色，直接返回');
+        return;
+    }
 
-    if (currentStage && storyState.currentProgress >= currentStage.requiredProgress) {
-        updateStoryState({
-            canAdvance: true
-        });
+    const currentStage = currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage];
+    console.log('[DEBUG] 检查阶段推进条件:', {
+        currentStage,
+        currentProgress: storyState.currentProgress,
+        requiredProgress: currentStage?.requiredProgress,
+        isLastStage: currentCharacter.storyMode.currentStage === currentCharacter.storyMode.stages.length - 1
+    });
+
+    if (!currentStage) {
+        console.log('[DEBUG] 无当前阶段信息，直接返回');
+        return;
+    }
+
+    // 检查是否达到推进条件
+    if (storyState.currentProgress >= currentStage.requiredProgress) {
+        console.log('[DEBUG] 达到推进条件，更新canAdvance状态');
+        storyState.canAdvance = true;
+    } else {
+        console.log('[DEBUG] 未达到推进条件，重置canAdvance状态');
+        storyState.canAdvance = false;
     }
 }
 

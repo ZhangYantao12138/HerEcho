@@ -104,21 +104,12 @@ export class TTSService {
     }
 
     private processText(text: string): string {
-        // 使用正则表达式匹配括号中的内容，并替换为适当的停顿
-        return text.replace(/\([^)]*\)/g, (match) => {
-            // 如果括号内容包含动作描述，替换为逗号
-            if (match.includes('轻轻') || match.includes('微微') || match.includes('慢慢') ||
-                match.includes('缓缓') || match.includes('静静') || match.includes('默默')) {
-                return '，';
-            }
-            // 如果括号内容包含表情描述，替换为句号
-            if (match.includes('笑') || match.includes('哭') || match.includes('怒') ||
-                match.includes('喜') || match.includes('悲') || match.includes('惊')) {
-                return '。';
-            }
-            // 其他情况替换为逗号
-            return '，';
-        });
+        console.log('[TTS] 处理前文本:', text);
+        // 只删除括号内容，保留引号内容
+        // 使用非贪婪匹配，并处理可能的嵌套括号
+        const processedText = text.replace(/\([^()]*\)/g, '');
+        console.log('[TTS] 处理后文本:', processedText);
+        return processedText;
     }
 
     private buildTTSRequest(text: string, character: Character): TTSRequest {

@@ -176,19 +176,40 @@ function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V) {
   });
 }
 
-// 新增：当前剧情阶段、是否最后阶段、进度百分比、推进按钮显示
+// 修改计算属性
 const currentStage = computed(() => {
-  return isStoryMode.value
-    ? currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]
-    : currentCharacter.value.storyMode.stages[0];
+  console.log('[DEBUG] 计算currentStage:', {
+    isStoryMode: isStoryMode.value,
+    storyMode: currentCharacter.value.storyMode,
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    stages: currentCharacter.value.storyMode.stages
+  });
+  
+  if (!isStoryMode.value) {
+    return currentCharacter.value.storyMode.stages[0];
+  }
+  return currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage];
 });
 
 const isLastStage = computed(() => {
+  console.log('[DEBUG] 计算isLastStage:', {
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    totalStages: currentCharacter.value.storyMode.stages.length
+  });
+  
   return isStoryMode.value &&
     currentCharacter.value.storyMode.currentStage === currentCharacter.value.storyMode.stages.length - 1;
 });
 
 const progressPercent = computed(() => {
+  console.log('[DEBUG] 计算progressPercent:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value,
+    currentProgress: storyState.currentProgress,
+    requiredProgress: currentStage.value?.requiredProgress
+  });
+
   if (!isStoryMode.value) return 100;
   const stage = currentStage.value;
   if (!stage || stage.requiredProgress === 0) return 100;
@@ -196,12 +217,17 @@ const progressPercent = computed(() => {
 });
 
 const showAdvanceButton = computed(() => {
+  console.log('[DEBUG] 计算showAdvanceButton:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value,
+    isLastStage: isLastStage.value,
+    canAdvance: storyState.canAdvance
+  });
+
   if (!isStoryMode.value) return false;
-  const stage = currentStage.value;
-  if (!stage) return false;
   if (isLastStage.value) return false;
-  if (stage.requiredProgress === 0) return false;
-  return storyState.currentProgress >= stage.requiredProgress;
+  return storyState.canAdvance;
 });
 
 // 监听剧情模式切换，刷新消息和进度
@@ -293,9 +319,10 @@ async function handleAIResponse(response: string) {
 
   // 更新剧情进度
   if (isStoryMode.value && currentStage.value) {
-    console.log('[DEBUG] 更新剧情进度:', {
+    console.log('[DEBUG] handleAIResponse 更新剧情进度:', {
       currentProgress: storyState.currentProgress,
-      requiredProgress: currentStage.value.requiredProgress
+      requiredProgress: currentStage.value.requiredProgress,
+      storyState: storyState
     });
     
     // 更新进度
@@ -551,12 +578,26 @@ function addUserMessage(text: string) {
 }
 
 function updateProgress() {
+  console.log('[DEBUG] updateProgress 开始执行:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value
+  });
+
   if (isStoryMode.value) {
+    console.log('[DEBUG] 剧情模式，调用updateStoryProgress');
     updateStoryProgress();
     canAdvanceStory.value = storyState.canAdvance;
+    console.log('[DEBUG] 更新后状态:', {
+      storyState: storyState,
+      canAdvance: canAdvanceStory.value,
+      progressPercent: progressPercent.value
+    });
   } else {
+    console.log('[DEBUG] 非剧情模式，更新普通进度');
     if (progress.value < 95) {
       progress.value += 5;
+      console.log('[DEBUG] 普通进度更新为:', progress.value);
     }
   }
 }
@@ -670,16 +711,29 @@ function handleStoryModeChange(value: boolean) {
   toggleStoryMode(value);
 }
 
-// 添加剧情推进处理函数
+// 修改handleAdvanceStory函数
 function handleAdvanceStory() {
+  console.log('[DEBUG] handleAdvanceStory 开始执行:', {
+    canAdvance: canAdvanceStory.value,
+    storyState: storyState,
+    currentStage: currentStage.value
+  });
+
   if (canAdvanceStory.value) {
     advanceStory();
     canAdvanceStory.value = false;
+    
     // 剧情推进后刷新消息列表，显示新阶段初始信息
+    const newStage = currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage];
+    console.log('[DEBUG] 推进到新阶段:', {
+      newStage,
+      currentStage: currentCharacter.value.storyMode.currentStage
+    });
+    
     messages.value = [
       {
         id: Date.now(),
-        content: `<div class="background-description">${currentStage.value?.systemPrompt || '暂无背景描述'}</div>`,
+        content: `<div class="background-description">${newStage?.systemPrompt || '暂无背景描述'}</div>`,
         isUser: false,
         hasAudio: false
       },
@@ -749,11 +803,12 @@ onMounted(() => {
             <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
           </div>
           <button 
-            v-if="showAdvanceButton" 
             class="advance-button"
+            :class="{ 'can-advance': storyState.canAdvance }"
+            :disabled="!storyState.canAdvance"
             @click="handleAdvanceStory"
           >
-            推进剧情
+            {{ storyState.canAdvance ? '推进剧情' : `${storyState.currentProgress}/${currentStage?.requiredProgress || 0}` }}
           </button>
         </div>
       </div>
@@ -951,21 +1006,58 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
 }
 
 .progress-bar {
   flex: 1;
-  height: 4px;
-  background-color: #3a4a4a;
-  border-radius: 2px;
+  height: 6px;
+  background-color: rgba(58, 74, 74, 0.3);
+  border-radius: 3px;
   overflow: hidden;
-  margin-right: 10px;
+  position: relative;
 }
 
 .progress-fill {
   height: 100%;
-  background-color: #42b883;
-  border-radius: 2px;
+  background: linear-gradient(90deg, #42b883 0%, #3aa876 100%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #cccccc;
+  min-width: 40px;
+  text-align: right;
 }
 
 /* 聊天容器 */
@@ -1312,22 +1404,29 @@ onMounted(() => {
 
 /* 添加推进按钮样式 */
 .advance-button {
-  background-color: #42b883;
-  color: white;
+  background-color: #3a4a4a;
+  color: #cccccc;
   border: none;
   border-radius: 4px;
   padding: 4px 8px;
   font-size: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.advance-button:hover {
-  background-color: #3aa876;
-}
-
-.advance-button:disabled {
-  background-color: #666;
   cursor: not-allowed;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.advance-button.can-advance {
+  background-color: #42b883;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.advance-button.can-advance:hover {
+  background-color: #3aa876;
+  transform: translateY(-1px);
 }
 </style> 
