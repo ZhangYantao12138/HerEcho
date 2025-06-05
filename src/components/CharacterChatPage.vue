@@ -263,10 +263,33 @@ async function toggleAudioPlayback(messageId: number) {
     return;
   }
 
-  const audioData = currentAudioData.value.get(messageId);
+  let audioData = currentAudioData.value.get(messageId);
+  
+  // 如果没有音频数据，尝试生成
   if (!audioData) {
-    console.warn('[DEBUG] 未找到音频数据:', messageId);
-    return;
+    console.log('[DEBUG] 未找到音频数据，开始生成音频, messageId:', messageId);
+    try {
+      // 设置生成状态
+      safeSetMap(isGeneratingAudio.value, messageId, true);
+      
+      // 生成音频
+      const ttsService = TTSService.getInstance();
+      audioData = await ttsService.generateAudio(message.content, currentCharacter.value);
+      
+      if (!audioData || audioData.byteLength === 0) {
+        throw new Error('生成的音频数据为空');
+      }
+      
+      // 保存音频数据
+      safeSetMap(currentAudioData.value, messageId, audioData);
+      safeSetMap(isPlaying.value, messageId, false);
+    } catch (error) {
+      console.error('[DEBUG] 音频生成失败:', error);
+      safeSetMap(isGeneratingAudio.value, messageId, false);
+      return;
+    } finally {
+      safeSetMap(isGeneratingAudio.value, messageId, false);
+    }
   }
 
   const ttsService = TTSService.getInstance();
