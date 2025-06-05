@@ -54,6 +54,10 @@ const currentBackground = computed(() => {
   return currentCharacter.value.avatar;
 });
 
+// 添加剧情模式相关的状态
+const isStoryMode = ref(currentCharacter.value.storyMode.enabled);
+const canAdvanceStory = ref(false);
+
 // 消息列表
 const messages = ref<Message[]>([
   {
@@ -70,7 +74,7 @@ const messages = ref<Message[]>([
     isUser: false,
     hasAudio: false
   },
-  ...currentCharacter.value.initialMessages
+  ...(isStoryMode.value ? [] : currentCharacter.value.initialMessages)
 ]);
 
 // 添加计算属性获取最近的两条消息
@@ -97,10 +101,6 @@ const currentAudioData = ref<Map<number, ArrayBuffer>>(new Map());
 const isPlaying = ref<Map<number, boolean>>(new Map());
 const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
 const isGeneratingAudio = ref<Map<number, boolean>>(new Map());
-
-// 添加剧情模式相关的状态
-const isStoryMode = ref(currentCharacter.value.storyMode.enabled);
-const canAdvanceStory = ref(false);
 
 // 监听storyState变化
 watch(() => storyState, (newState) => {
@@ -140,7 +140,7 @@ watch(() => route.params, async (newParams) => {
     // 清除历史记录
     clearChatHistory();
     
-    // 重置消息列表，显示背景和初始消息
+    // 重置消息列表，根据模式显示背景描述和初始对话
     messages.value = [
       {
         id: Date.now(),
@@ -148,7 +148,7 @@ watch(() => route.params, async (newParams) => {
         isUser: false,
         hasAudio: false
       },
-      ...newCharacter.initialMessages
+      ...(isStoryMode.value ? [] : newCharacter.initialMessages)
     ];
     
     // 重置进度
@@ -239,10 +239,8 @@ watch(isStoryMode, (newVal) => {
       isUser: false,
       hasAudio: false
     },
-    ...(currentCharacter.value.initialMessages || [])
+    ...(newVal ? [] : currentCharacter.value.initialMessages)
   ];
-  // 可选：重置进度
-  // progress.value = currentCharacter.value.sceneInfo.progress;
   scrollToBottom();
 });
 
@@ -633,7 +631,7 @@ function clearChat() {
       isUser: false,
       hasAudio: false
     },
-    ...currentCharacter.value.initialMessages
+    ...(isStoryMode.value ? [] : currentCharacter.value.initialMessages)
   ];
   clearChatHistory();
   progress.value = currentCharacter.value.sceneInfo.progress;
@@ -723,7 +721,7 @@ function handleAdvanceStory() {
     advanceStory();
     canAdvanceStory.value = false;
     
-    // 剧情推进后刷新消息列表，显示新阶段初始信息
+    // 剧情推进后只显示新阶段的背景描述
     const newStage = currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage];
     console.log('[DEBUG] 推进到新阶段:', {
       newStage,
@@ -736,8 +734,7 @@ function handleAdvanceStory() {
         content: `<div class="background-description">${newStage?.systemPrompt || '暂无背景描述'}</div>`,
         isUser: false,
         hasAudio: false
-      },
-      ...(currentCharacter.value.initialMessages || [])
+      }
     ];
     scrollToBottom();
   }
