@@ -56,7 +56,15 @@ const currentBackground = computed(() => {
 const messages = ref<Message[]>([
   {
     id: Date.now(),
-    content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+    content: (() => {
+      console.log('[DEBUG] 初始化背景描述消息:', {
+        currentStage: currentCharacter.value.storyMode.currentStage,
+        stages: currentCharacter.value.storyMode.stages,
+        systemPrompt: currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt,
+        character: currentCharacter.value
+      });
+      return `<div class="background-description">${currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`;
+    })(),
     isUser: false,
     hasAudio: false
   },
@@ -115,6 +123,14 @@ watch(() => route.params, async (newParams) => {
   const newCharacterId = newParams.characterId as string;
   const newCharacter = getCharacterById(newCharacterId);
   if (newCharacter) {
+    console.log('[DEBUG] 角色切换:', {
+      characterId: newCharacterId,
+      newCharacter,
+      storyMode: newCharacter.storyMode,
+      currentStage: newCharacter.storyMode.currentStage,
+      systemPrompt: newCharacter.storyMode.stages[newCharacter.storyMode.currentStage]?.systemPrompt
+    });
+    
     // 设置新角色
     currentCharacter.value = newCharacter;
     setCurrentCharacter(newCharacter);
@@ -126,7 +142,7 @@ watch(() => route.params, async (newParams) => {
     messages.value = [
       {
         id: Date.now(),
-        content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
+        content: `<div class="background-description">${newCharacter.storyMode.stages[newCharacter.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`,
         isUser: false,
         hasAudio: false
       },
@@ -145,22 +161,40 @@ watch(() => currentCharacter.value, () => {
   isDynamicBackground.value = hasDynamicBackground.value;
 }, { deep: true });
 
+// 添加Map操作辅助函数
+function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V) {
+  console.log('[DEBUG] 设置Map值:', { mapName: map === currentAudioData.value ? 'currentAudioData' : 
+    map === isPlaying.value ? 'isPlaying' : 'isGeneratingAudio', key, value });
+  map.set(key, value);
+  console.log('[DEBUG] Map更新后:', { 
+    mapName: map === currentAudioData.value ? 'currentAudioData' : 
+      map === isPlaying.value ? 'isPlaying' : 'isGeneratingAudio',
+    size: map.size,
+    entries: Array.from(map.entries())
+  });
+}
+
 // 修改handleAIResponse函数
 async function handleAIResponse(response: string) {
-  console.log('[Chat] 收到AI响应:', response);
+  console.log('[DEBUG] handleAIResponse 开始执行');
+  console.log('[DEBUG] 收到AI响应:', response);
   
   // 添加消息到列表
   const messageId = Date.now();
+  console.log('[DEBUG] 创建新消息, messageId:', messageId);
+  
   messages.value.push({
     id: messageId,
     content: response,
     isUser: false,
     hasAudio: true
   });
+  
+  console.log('[DEBUG] 消息添加后的列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
 
   // 生成TTS音频
   try {
-    console.log('[Chat] 开始生成TTS音频, messageId:', messageId);
+    console.log('[DEBUG] 开始生成TTS音频, messageId:', messageId);
     const ttsService = TTSService.getInstance();
     const audioData = await ttsService.generateAudio(response, currentCharacter.value);
     
@@ -168,48 +202,41 @@ async function handleAIResponse(response: string) {
       throw new Error('生成的音频数据为空');
     }
     
-    console.log('[Chat] TTS音频生成成功:', {
+    console.log('[DEBUG] TTS音频生成成功:', {
       messageId,
       audioDataSize: audioData.byteLength,
       hasAudioData: !!audioData
     });
     
-    // 确保在设置数据之前先初始化Map
-    if (!currentAudioData.value) {
-      currentAudioData.value = new Map();
-    }
-    if (!isPlaying.value) {
-      isPlaying.value = new Map();
-    }
-    
-    // 缓存音频数据
-    currentAudioData.value.set(messageId, audioData);
-    isPlaying.value.set(messageId, false);
+    // 使用辅助函数设置音频数据
+    safeSetMap(currentAudioData.value, messageId, audioData);
+    safeSetMap(isPlaying.value, messageId, false);
     
     // 如果启用了自动播放，则自动播放音频
     if (autoPlayTTS.value) {
-      console.log('[Chat] 自动播放音频, messageId:', messageId);
+      console.log('[DEBUG] 准备自动播放音频, messageId:', messageId);
       // 停止其他正在播放的音频
       for (const [id, playing] of isPlaying.value.entries()) {
         if (playing) {
-          console.log('[Chat] 停止其他音频, messageId:', id);
+          console.log('[DEBUG] 停止其他音频, messageId:', id);
           ttsService.stopAudio();
-          isPlaying.value.set(id, false);
+          safeSetMap(isPlaying.value, id, false);
         }
       }
       
       // 设置播放结束回调
       ttsService.onAudioEnded(() => {
-        console.log('[Chat] 音频播放结束, messageId:', messageId);
-        isPlaying.value.set(messageId, false);
+        console.log('[DEBUG] 音频播放结束, messageId:', messageId);
+        safeSetMap(isPlaying.value, messageId, false);
       });
       
       // 开始播放
+      console.log('[DEBUG] 开始播放音频, messageId:', messageId);
       await ttsService.playAudio(audioData);
-      isPlaying.value.set(messageId, true);
+      safeSetMap(isPlaying.value, messageId, true);
     }
   } catch (error) {
-    console.error('[Chat] TTS生成失败:', error);
+    console.error('[DEBUG] TTS生成失败:', error);
     messages.value.push({
       id: Date.now(),
       content: '语音生成失败，请重试',
@@ -219,57 +246,62 @@ async function handleAIResponse(response: string) {
   }
 }
 
-// 修改音频播放控制函数
+// 修改toggleAudioPlayback函数
 async function toggleAudioPlayback(messageId: number) {
+  console.log('[DEBUG] toggleAudioPlayback 开始执行, messageId:', messageId);
+  console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+  
   const message = messages.value.find(msg => msg.id === messageId);
   if (!message) {
-    console.warn('[Chat] 未找到消息:', messageId);
+    console.warn('[DEBUG] 未找到消息:', messageId);
     return;
   }
 
   // 检查消息是否还在生成中
   if (isGenerating.value && messageId === messages.value[messages.value.length - 1].id) {
+    console.log('[DEBUG] 消息正在生成中，跳过播放');
     return;
   }
 
   const audioData = currentAudioData.value.get(messageId);
   if (!audioData) {
-    console.warn('[Chat] 未找到音频数据:', messageId);
+    console.warn('[DEBUG] 未找到音频数据:', messageId);
     return;
   }
 
   const ttsService = TTSService.getInstance();
   const isCurrentlyPlaying = isPlaying.value.get(messageId);
+  console.log('[DEBUG] 当前播放状态:', { messageId, isCurrentlyPlaying });
 
   try {
     if (isCurrentlyPlaying) {
-      console.log('[Chat] 停止播放音频, messageId:', messageId);
+      console.log('[DEBUG] 停止播放音频, messageId:', messageId);
       ttsService.stopAudio();
-      isPlaying.value.set(messageId, false);
+      safeSetMap(isPlaying.value, messageId, false);
     } else {
       // 停止其他正在播放的音频
       for (const [id, playing] of isPlaying.value.entries()) {
         if (playing && id !== messageId) {
-          console.log('[Chat] 停止其他音频, messageId:', id);
+          console.log('[DEBUG] 停止其他音频, messageId:', id);
           ttsService.stopAudio();
-          isPlaying.value.set(id, false);
+          safeSetMap(isPlaying.value, id, false);
         }
       }
 
-      console.log('[Chat] 开始播放音频, messageId:', messageId);
+      console.log('[DEBUG] 开始播放音频, messageId:', messageId);
       // 设置播放结束回调
       ttsService.onAudioEnded(() => {
-        console.log('[Chat] 音频播放结束, messageId:', messageId);
-        isPlaying.value.set(messageId, false);
+        console.log('[DEBUG] 音频播放结束, messageId:', messageId);
+        safeSetMap(isPlaying.value, messageId, false);
       });
       
       // 开始播放
       await ttsService.playAudio(audioData);
-      isPlaying.value.set(messageId, true);
+      safeSetMap(isPlaying.value, messageId, true);
     }
   } catch (error) {
-    console.error('[Chat] 音频播放失败:', error);
-    isPlaying.value.set(messageId, false);
+    console.error('[DEBUG] 音频播放失败:', error);
+    safeSetMap(isPlaying.value, messageId, false);
   }
 }
 
@@ -277,11 +309,14 @@ async function toggleAudioPlayback(messageId: number) {
 const emit = defineEmits(['stream-complete']);
 
 async function sendMessage(text: string) {
+  console.log('[DEBUG] sendMessage 开始执行');
   // 添加用户消息
   addUserMessage(text);
   
   // 添加加载动画消息
   const loadingMessageId = Date.now();
+  console.log('[DEBUG] 创建加载消息, messageId:', loadingMessageId);
+  
   messages.value.push({
     id: loadingMessageId,
     content: '<div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>',
@@ -289,12 +324,14 @@ async function sendMessage(text: string) {
     hasAudio: true
   });
   
+  console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+  
   isGenerating.value = true;
   currentStreamingMessage.value = '';
-  isGeneratingAudio.value.set(loadingMessageId, true);
+  safeSetMap(isGeneratingAudio.value, loadingMessageId, true);
   
   try {
-    console.log('[Chat] 开始生成AI回复, autoPlayTTS:', autoPlayTTS.value);
+    console.log('[DEBUG] 开始生成AI回复');
     
     const response = await generateCharacterReply(
       currentCharacter.value.id,
@@ -308,62 +345,63 @@ async function sendMessage(text: string) {
       }
     );
 
-    // 消息生成完成后，生成TTS音频
-    console.log('[Chat] AI回复生成完成，准备生成TTS音频');
-    
+    console.log('[DEBUG] AI回复生成完成');
+    console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+
+    // 更新最后一条消息的内容
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage) {
+      lastMessage.content = response;
+    }
+
+    // 生成TTS音频
     try {
       const ttsService = TTSService.getInstance();
-      console.log('[Chat] 开始生成TTS音频, messageId:', loadingMessageId);
+      console.log('[DEBUG] 开始生成TTS音频, messageId:', loadingMessageId);
       
-      const audioData = await ttsService.generateAudio(currentStreamingMessage.value, currentCharacter.value);
+      const audioData = await ttsService.generateAudio(response, currentCharacter.value);
       
       if (!audioData || audioData.byteLength === 0) {
         throw new Error('生成的音频数据为空');
       }
       
-      console.log('[Chat] TTS音频生成成功:', {
+      console.log('[DEBUG] TTS音频生成成功:', {
         messageId: loadingMessageId,
         audioDataSize: audioData.byteLength,
         hasAudioData: !!audioData
       });
       
-      // 确保在设置数据之前先初始化Map
-      if (!currentAudioData.value) {
-        currentAudioData.value = new Map();
-      }
-      if (!isPlaying.value) {
-        isPlaying.value = new Map();
-      }
-      
-      currentAudioData.value.set(loadingMessageId, audioData);
-      isPlaying.value.set(loadingMessageId, false);
+      // 使用辅助函数设置音频数据
+      safeSetMap(currentAudioData.value, loadingMessageId, audioData);
+      safeSetMap(isPlaying.value, loadingMessageId, false);
       
       // 如果启用了自动播放，则自动播放音频
       if (autoPlayTTS.value) {
-        console.log('[Chat] 自动播放音频, messageId:', loadingMessageId);
+        console.log('[DEBUG] 准备自动播放音频, messageId:', loadingMessageId);
         // 停止其他正在播放的音频
         for (const [id, playing] of isPlaying.value.entries()) {
           if (playing) {
-            console.log('[Chat] 停止其他音频, messageId:', id);
+            console.log('[DEBUG] 停止其他音频, messageId:', id);
             ttsService.stopAudio();
-            isPlaying.value.set(id, false);
+            safeSetMap(isPlaying.value, id, false);
           }
         }
         
         // 设置播放结束回调
         ttsService.onAudioEnded(() => {
-          console.log('[Chat] 音频播放结束, messageId:', loadingMessageId);
-          isPlaying.value.set(loadingMessageId, false);
+          console.log('[DEBUG] 音频播放结束, messageId:', loadingMessageId);
+          safeSetMap(isPlaying.value, loadingMessageId, false);
         });
         
         // 开始播放
+        console.log('[DEBUG] 开始播放音频, messageId:', loadingMessageId);
         await ttsService.playAudio(audioData);
-        isPlaying.value.set(loadingMessageId, true);
+        safeSetMap(isPlaying.value, loadingMessageId, true);
       } else {
-        console.log('[Chat] 自动播放已禁用，跳过音频播放');
+        console.log('[DEBUG] 自动播放已禁用，跳过音频播放');
       }
     } catch (error) {
-      console.error('[Chat] TTS生成失败:', error);
+      console.error('[DEBUG] TTS生成失败:', error);
       messages.value.push({
         id: Date.now(),
         content: '语音生成失败，请重试',
@@ -372,7 +410,7 @@ async function sendMessage(text: string) {
       });
     }
   } catch (error) {
-    console.error('获取AI回复失败:', error);
+    console.error('[DEBUG] 获取AI回复失败:', error);
     // 移除加载消息
     messages.value = messages.value.filter(msg => msg.id !== loadingMessageId);
     // 添加错误消息
@@ -385,7 +423,11 @@ async function sendMessage(text: string) {
   } finally {
     isGenerating.value = false;
     currentStreamingMessage.value = '';
-    isGeneratingAudio.value.set(loadingMessageId, false);
+    safeSetMap(isGeneratingAudio.value, loadingMessageId, false);
+    console.log('[DEBUG] sendMessage 执行完成');
+    console.log('[DEBUG] 最终消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+    console.log('[DEBUG] 最终音频数据Map:', Array.from(currentAudioData.value.entries()));
+    console.log('[DEBUG] 最终播放状态Map:', Array.from(isPlaying.value.entries()));
   }
   
   updateProgress();
@@ -448,10 +490,17 @@ function showClearDialog() {
 }
 
 function clearChat() {
+  console.log('[DEBUG] 清除聊天记录:', {
+    currentCharacter: currentCharacter.value,
+    storyMode: currentCharacter.value.storyMode,
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    systemPrompt: currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt
+  });
+  
   messages.value = [
     {
       id: Date.now(),
-      content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+      content: `<div class="background-description">${currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`,
       isUser: false,
       hasAudio: false
     },
@@ -648,7 +697,16 @@ onMounted(() => {
             ]"
           >
             <template v-if="message.content.includes('background-description')">
-              <div class="background-description">{{ currentCharacter.backgroundDescription }}</div>
+              <div class="background-description" @click="() => {
+                console.log('[DEBUG] 背景描述点击:', {
+                  currentStage: currentCharacter.storyMode.currentStage,
+                  stages: currentCharacter.storyMode.stages,
+                  systemPrompt: currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage]?.systemPrompt,
+                  character: currentCharacter
+                });
+              }">
+                {{ currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage]?.systemPrompt || '暂无背景描述' }}
+              </div>
             </template>
             <template v-else>
               <div v-if="!message.isUser" class="character-avatar">

@@ -121,7 +121,7 @@ export class TTSService {
                 vol: character.voiceSettings.vol || 1.0,
                 pitch: character.voiceSettings.pitch || 0
             },
-            stream: true,
+            stream: false,
             audio_setting: {
                 sample_rate: 32000,
                 bitrate: 128000,
@@ -134,8 +134,8 @@ export class TTSService {
         return request;
     }
 
-    private async streamTTS(text: string, character: Character): Promise<ArrayBuffer> {
-        console.log('[TTS] 开始流式TTS请求');
+    private async generateTTS(text: string, character: Character): Promise<ArrayBuffer> {
+        console.log('[TTS] 开始TTS请求');
 
         const request = this.buildTTSRequest(text, character);
         const url = new URL(this.baseUrl);
@@ -146,113 +146,51 @@ export class TTSService {
         try {
             const response = await axios.post(url.toString(), request, {
                 headers: this.headers,
-                responseType: 'text',
-                onDownloadProgress: (progressEvent: AxiosProgressEvent) => {
-                    console.log('[TTS] 下载进度:', {
-                        loaded: progressEvent.loaded,
-                        total: progressEvent.total
-                    });
-                }
+                responseType: 'json'
             });
 
-            console.log('[TTS] 完整响应数据:', response.data);
+            console.log('[TTS] 收到响应:', response.data);
 
             if (!response.data) {
                 throw new Error('响应数据为空');
             }
 
-            // 检查响应是否为错误信息
-            try {
-                const errorResponse = JSON.parse(response.data);
-                if (errorResponse.base_resp && errorResponse.base_resp.status_code !== 0) {
-                    const errorMsg = `API错误 (${errorResponse.base_resp.status_code}): ${errorResponse.base_resp.status_msg}`;
-                    console.error('[TTS]', errorMsg);
-                    if (errorResponse.base_resp.status_code === 1004) {
-                        console.error('[TTS] 请检查以下配置：');
-                        console.error('1. VITE_MINIMAX_API_KEY 是否正确');
-                        console.error('2. VITE_MINIMAX_GROUP_ID 是否与 API Key 匹配');
-                        console.error('3. API Key 是否有权限访问该 Group');
-                        console.error('当前配置：', {
-                            groupId: this.groupId,
-                            hasApiKey: !!this.apiKey,
-                            url: url.toString()
-                        });
-                    }
-                    throw new Error(errorMsg);
+            const ttsResponse = response.data as TTSResponse;
+
+            if (ttsResponse.base_resp.status_code !== 0) {
+                const errorMsg = `API错误 (${ttsResponse.base_resp.status_code}): ${ttsResponse.base_resp.status_msg}`;
+                console.error('[TTS]', errorMsg);
+                if (ttsResponse.base_resp.status_code === 1004) {
+                    console.error('[TTS] 请检查以下配置：');
+                    console.error('1. VITE_MINIMAX_API_KEY 是否正确');
+                    console.error('2. VITE_MINIMAX_GROUP_ID 是否与 API Key 匹配');
+                    console.error('3. API Key 是否有权限访问该 Group');
+                    console.error('当前配置：', {
+                        groupId: this.groupId,
+                        hasApiKey: !!this.apiKey,
+                        url: url.toString()
+                    });
                 }
-            } catch (parseError) {
-                // 如果不是 JSON 格式，继续处理
+                throw new Error(errorMsg);
             }
 
-            const lines = response.data.split('\n').filter((line: string) => line.trim());
-            console.log('[TTS] 解析后的行数:', lines.length);
-
-            if (lines.length === 0) {
-                throw new Error('响应数据格式错误：没有有效的行数据');
+            if (!ttsResponse.data.audio) {
+                throw new Error('响应中没有音频数据');
             }
 
-            const audioChunks: Uint8Array[] = [];
-            let isFirstChunk = true;
-
-            for (const line of lines) {
-                if (line.startsWith('data:')) {
-                    try {
-                        const jsonData = JSON.parse(line.slice(5)) as TTSResponse;
-                        console.log('[TTS] 解析的数据块:', jsonData);
-
-                        if (jsonData.base_resp.status_code !== 0) {
-                            throw new Error(`API错误: ${jsonData.base_resp.status_msg}`);
-                        }
-
-                        if (jsonData.data.audio) {
-                            // 使用 Uint8Array 替代 Buffer
-                            const hexString = jsonData.data.audio;
-                            const audioData = new Uint8Array(hexString.length / 2);
-                            for (let i = 0; i < hexString.length; i += 2) {
-                                audioData[i / 2] = parseInt(hexString.substr(i, 2), 16);
-                            }
-                            audioChunks.push(audioData);
-
-                            if (isFirstChunk) {
-                                console.log('[TTS] 收到第一个音频块:', {
-                                    size: audioData.length,
-                                    status: jsonData.data.status
-                                });
-                                isFirstChunk = false;
-                            }
-                        }
-
-                        if (jsonData.data.status === 2) {
-                            console.log('[TTS] 收到最后一个音频块');
-                            break;
-                        }
-                    } catch (error) {
-                        console.error('[TTS] 解析响应数据失败:', error, '原始数据:', line);
-                        throw error;
-                    }
-                }
+            // 将十六进制字符串转换为 ArrayBuffer
+            const hexString = ttsResponse.data.audio;
+            const audioData = new Uint8Array(hexString.length / 2);
+            for (let i = 0; i < hexString.length; i += 2) {
+                audioData[i / 2] = parseInt(hexString.substr(i, 2), 16);
             }
 
-            if (audioChunks.length === 0) {
-                console.error('[TTS] 未收到任何音频数据，原始响应:', response.data);
-                throw new Error('未收到任何音频数据');
-            }
-
-            // 合并所有音频块
-            const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.length, 0);
-            const combinedAudio = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const chunk of audioChunks) {
-                combinedAudio.set(chunk, offset);
-                offset += chunk.length;
-            }
-
-            console.log('[TTS] 音频数据合并完成:', {
-                totalChunks: audioChunks.length,
-                totalSize: combinedAudio.length
+            console.log('[TTS] 音频数据生成成功:', {
+                size: audioData.length,
+                extraInfo: ttsResponse.extra_info
             });
 
-            return combinedAudio.buffer;
+            return audioData.buffer;
         } catch (error) {
             if (axios.isAxiosError(error)) {
                 console.error('[TTS] API错误:', {
@@ -270,11 +208,12 @@ export class TTSService {
         const cacheKey = `${character.id}_${text}`;
 
         if (this.audioCache.has(cacheKey)) {
+            console.log('[TTS] 使用缓存的音频数据');
             return this.audioCache.get(cacheKey)!;
         }
 
         try {
-            const audioData = await this.streamTTS(text, character);
+            const audioData = await this.generateTTS(text, character);
             this.audioCache.set(cacheKey, audioData);
             return audioData;
         } catch (error) {
