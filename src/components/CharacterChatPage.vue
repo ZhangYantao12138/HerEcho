@@ -90,7 +90,7 @@ const recentMessages = computed(() => {
 
 // 进度信息
 const progress = ref(currentCharacter.value.sceneInfo.progress);
-const isCollapsed = ref(false);
+const isCollapsed = ref(true);
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
 
@@ -976,12 +976,21 @@ onMounted(() => {
 
 /* 场景信息 */
 .scene-container {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
   background-color: rgba(26, 42, 42, 0.6);
   color: white;
   padding: 10px 15px;
   font-size: 14px;
   height: 80px;
   box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 99;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .scene-info {
@@ -1059,24 +1068,26 @@ onMounted(() => {
 
 /* 聊天容器 */
 .chat-wrapper {
-  position: absolute;
-  bottom: 0;
+  position: fixed;
   left: 0;
   width: 100%;
-  transition: height 0.3s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   background-color: rgba(18, 26, 26, 0.5);
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .chat-wrapper:not(.collapsed) {
-  height: calc(100% - 50px - 80px);
+  height: calc(100% - 140px);
+  top: 140px;
+  bottom: 0;
 }
 
 .chat-wrapper.collapsed {
-  height: auto;
-  min-height: 40%;
-  max-height: 40%;
+  height: 25%;
+  bottom: 100px;
 }
 
 .chat-container {
@@ -1087,13 +1098,13 @@ onMounted(() => {
   padding: 10px 0;
   margin-top: 36px;
   margin-bottom: 120px;
-  -webkit-overflow-scrolling: touch; /* 添加弹性滚动 */
-  overscroll-behavior: contain; /* 防止滚动传播 */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   transition: all 0.3s ease;
 }
 
 .chat-wrapper.collapsed .chat-container {
-  margin-bottom: 80px;
+  margin-bottom: 0;
 }
 
 /* 消息样式 */
@@ -1425,5 +1436,122 @@ onMounted(() => {
 .advance-button.can-advance:hover {
   background-color: #3aa876;
   transform: translateY(-1px);
+}
+
+.story-progress-container {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  background-color: rgba(26, 42, 42, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 15px;
+  z-index: 99;
+  max-width: 480px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.story-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stage-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-description {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #42b883, #3aa876);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-button {
+  padding: 6px 12px;
+  background-color: rgba(66, 184, 131, 0.2);
+  color: #42b883;
+  border: 1px solid #42b883;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.progress-button:hover:not(:disabled) {
+  background-color: #42b883;
+  color: white;
+}
+
+.progress-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
 }
 </style> 

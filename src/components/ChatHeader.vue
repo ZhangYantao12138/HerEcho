@@ -140,7 +140,6 @@ onUnmounted(() => {
           </div>
           <div class="character-info">
             <div class="name">{{ props.currentCharacter.name }}</div>
-            <div class="scene">{{ props.currentCharacter.sceneInfo.title }}</div>
           </div>
         </div>
         
@@ -156,7 +155,6 @@ onUnmounted(() => {
             </div>
             <div class="character-info">
               <div class="name">{{ character.name }}</div>
-              <div class="scene">{{ character.sceneInfo.title }}</div>
             </div>
           </div>
         </div>
@@ -240,15 +238,21 @@ onUnmounted(() => {
 
 <style scoped>
 .chat-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background-color: rgba(26, 42, 42, 0.8);
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
-  background-color: rgba(26, 42, 42, 0.8);
-  backdrop-filter: blur(10px);
-  height: 50px;
-  position: relative;
-  z-index: 1000;
+  padding: 0 15px;
+  z-index: 100;
+  max-width: 480px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .left-section {
@@ -260,35 +264,45 @@ onUnmounted(() => {
 .back-button {
   background: none;
   border: none;
-  color: #cccccc;
+  color: white;
   cursor: pointer;
   padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
 }
 
 .back-button:hover {
-  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .character-selector {
   position: relative;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.character-selector:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .selected-character {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .character-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .character-avatar img {
@@ -303,35 +317,31 @@ onUnmounted(() => {
 }
 
 .name {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
   color: white;
-}
-
-.scene {
-  font-size: 12px;
-  color: #cccccc;
+  line-height: 1.2;
 }
 
 .character-list {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   left: 0;
-  margin-top: 8px;
+  width: 200px;
   background-color: rgba(26, 42, 42, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  min-width: 200px;
-  max-height: 300px;
-  overflow-y: auto;
+  overflow: hidden;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .character-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 12px;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -346,87 +356,62 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-.settings-menu {
-  position: relative;
-}
-
 .menu-button {
   background: none;
   border: none;
-  color: #cccccc;
+  color: white;
   cursor: pointer;
   padding: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s ease;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
 }
 
 .menu-button:hover {
-  color: white;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.settings-menu {
+  position: relative;
 }
 
 .settings-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
-  margin-top: 8px;
+  width: 200px;
   background-color: rgba(26, 42, 42, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  min-width: 280px;
-  padding: 16px;
-  z-index: 1001;
-}
-
-/* 添加过渡动画 */
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+  overflow: hidden;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .settings-section {
-  margin-bottom: 20px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .settings-section:last-child {
-  margin-bottom: 0;
+  border-bottom: none;
 }
 
 .settings-section h4 {
-  margin: 0 0 12px 0;
-  color: #999;
+  margin: 0 0 8px 0;
   font-size: 14px;
-  font-weight: 500;
-}
-
-.test-api-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #2c3e50;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.test-api-button:hover {
-  background-color: #34495e;
+  color: #cccccc;
 }
 
 .settings-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 16px;
-  color: #fff;
+  color: white;
+  font-size: 14px;
 }
 
 .switch {
@@ -478,5 +463,31 @@ input:checked + .slider:before {
 
 .slider.round:before {
   border-radius: 50%;
+}
+
+.test-api-button {
+  width: 100%;
+  padding: 8px;
+  background-color: #42b883;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.test-api-button:hover {
+  background-color: #3aa876;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>
