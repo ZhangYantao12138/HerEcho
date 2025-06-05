@@ -213,7 +213,11 @@ const progressPercent = computed(() => {
   if (!isStoryMode.value) return 100;
   const stage = currentStage.value;
   if (!stage || stage.requiredProgress === 0) return 100;
-  return Math.min(100, Math.round(storyState.currentProgress / stage.requiredProgress * 100));
+  
+  // 确保进度不会超过100%
+  const percent = Math.min(100, Math.round((storyState.currentProgress / stage.requiredProgress) * 100));
+  console.log('[DEBUG] 计算出的进度百分比:', percent);
+  return percent;
 });
 
 const showAdvanceButton = computed(() => {
@@ -796,8 +800,13 @@ onMounted(() => {
           </div>
         </div>
         <div class="progress-section">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${progressPercent}%` }"></div>
+          <div class="progress-segments">
+            <div 
+              v-for="i in currentStage?.requiredProgress || 0" 
+              :key="i"
+              class="progress-segment"
+              :class="{ 'completed': i <= storyState.currentProgress }"
+            ></div>
           </div>
           <button 
             class="advance-button"
@@ -1016,54 +1025,52 @@ onMounted(() => {
   padding: 0 4px;
 }
 
-.progress-bar {
+.progress-segments {
   flex: 1;
+  display: flex;
+  gap: 2px;
   height: 6px;
-  background-color: rgba(58, 74, 74, 0.3);
+  background-color: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
   overflow: hidden;
-  position: relative;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #42b883 0%, #3aa876 100%);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-  position: relative;
-  overflow: hidden;
+.progress-segment {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
 }
 
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.2) 50%,
-    rgba(255, 255, 255, 0.1) 100%
-  );
-  animation: shimmer 2s infinite;
+.progress-segment.completed {
+  background-color: #42b883;
+  box-shadow: 0 0 8px rgba(66, 184, 131, 0.3);
 }
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.progress-text {
-  font-size: 12px;
+.advance-button {
+  background-color: #3a4a4a;
   color: #cccccc;
-  min-width: 40px;
-  text-align: right;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.advance-button.can-advance {
+  background-color: #42b883;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.advance-button.can-advance:hover {
+  background-color: #3aa876;
+  transform: translateY(-1px);
 }
 
 /* 聊天容器 */

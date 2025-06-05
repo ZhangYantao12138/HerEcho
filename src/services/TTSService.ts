@@ -105,9 +105,14 @@ export class TTSService {
 
     private processText(text: string): string {
         console.log('[TTS] 处理前文本:', text);
-        // 只删除括号内容，保留引号内容
-        // 使用非贪婪匹配，并处理可能的嵌套括号
-        const processedText = text.replace(/\([^()]*\)/g, '');
+        // 处理中英文括号
+        let processedText = text;
+        let lastText = '';
+        while (processedText !== lastText) {
+            lastText = processedText;
+            // 同时处理中英文括号
+            processedText = processedText.replace(/[（(][^）)]*[）)]/g, '');
+        }
         console.log('[TTS] 处理后文本:', processedText);
         return processedText;
     }
