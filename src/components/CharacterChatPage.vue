@@ -5,7 +5,18 @@ import { RiDeleteBin2Line } from '@remixicon/vue';
 import ChatHeader from './ChatHeader.vue';
 import ChatInput from './ChatInput.vue';
 import BottomNav from './BottomNav.vue';
-import { clearChatHistory, generateCharacterReply, setCurrentCharacter, generatePlayerReply } from '../services/chatService';
+import { 
+  clearChatHistory, 
+  generateCharacterReply, 
+  generateAutoReplies, 
+  setCurrentCharacter, 
+  generatePlayerReply,
+  toggleStoryMode,
+  advanceStory,
+  updateProgress as updateStoryProgress,
+  storyState,
+  updateStoryState
+} from '../services/chatService';
 import { getDefaultCharacter, getCharacterById } from '../config/characters';
 import type { Character, Message } from '../types/character';
 import type { AIModel } from '../types/chat';
@@ -43,15 +54,27 @@ const currentBackground = computed(() => {
   return currentCharacter.value.avatar;
 });
 
+// 添加剧情模式相关的状态
+const isStoryMode = ref(currentCharacter.value.storyMode.enabled);
+const canAdvanceStory = ref(false);
+
 // 消息列表
 const messages = ref<Message[]>([
   {
     id: Date.now(),
-    content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+    content: (() => {
+      console.log('[DEBUG] 初始化背景描述消息:', {
+        currentStage: currentCharacter.value.storyMode.currentStage,
+        stages: currentCharacter.value.storyMode.stages,
+        systemPrompt: currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt,
+        character: currentCharacter.value
+      });
+      return `<div class="background-description">${currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`;
+    })(),
     isUser: false,
     hasAudio: false
   },
-  ...currentCharacter.value.initialMessages
+  ...(isStoryMode.value ? [] : currentCharacter.value.initialMessages)
 ]);
 
 // 添加计算属性获取最近的两条消息
@@ -67,7 +90,7 @@ const recentMessages = computed(() => {
 
 // 进度信息
 const progress = ref(currentCharacter.value.sceneInfo.progress);
-const isCollapsed = ref(false);
+const isCollapsed = ref(true);
 const chatContainerRef = ref<HTMLElement | null>(null);
 const showClearConfirm = ref(false);
 
@@ -78,6 +101,18 @@ const currentAudioData = ref<Map<number, ArrayBuffer>>(new Map());
 const isPlaying = ref<Map<number, boolean>>(new Map());
 const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
 const isGeneratingAudio = ref<Map<number, boolean>>(new Map());
+
+// 监听storyState变化
+watch(() => storyState, (newState) => {
+  isStoryMode.value = newState.isStoryMode;
+  canAdvanceStory.value = newState.canAdvance;
+}, { deep: true });
+
+// 监听角色变化时更新剧情模式状态
+watch(() => currentCharacter.value, (newCharacter) => {
+  isStoryMode.value = newCharacter.storyMode.enabled;
+  canAdvanceStory.value = storyState.canAdvance;
+}, { deep: true });
 
 // 添加autoPlayTTS的监听器
 watch(autoPlayTTS, (newValue) => {
@@ -90,6 +125,14 @@ watch(() => route.params, async (newParams) => {
   const newCharacterId = newParams.characterId as string;
   const newCharacter = getCharacterById(newCharacterId);
   if (newCharacter) {
+    console.log('[DEBUG] 角色切换:', {
+      characterId: newCharacterId,
+      newCharacter,
+      storyMode: newCharacter.storyMode,
+      currentStage: newCharacter.storyMode.currentStage,
+      systemPrompt: newCharacter.storyMode.stages[newCharacter.storyMode.currentStage]?.systemPrompt
+    });
+    
     // 设置新角色
     currentCharacter.value = newCharacter;
     setCurrentCharacter(newCharacter);
@@ -97,15 +140,15 @@ watch(() => route.params, async (newParams) => {
     // 清除历史记录
     clearChatHistory();
     
-    // 重置消息列表，显示背景和初始消息
+    // 重置消息列表，根据模式显示背景描述和初始对话
     messages.value = [
       {
         id: Date.now(),
-        content: `<div class="background-description">${newCharacter.backgroundDescription}</div>`,
+        content: `<div class="background-description">${newCharacter.storyMode.stages[newCharacter.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`,
         isUser: false,
         hasAudio: false
       },
-      ...newCharacter.initialMessages
+      ...(isStoryMode.value ? [] : newCharacter.initialMessages)
     ];
     
     // 重置进度
@@ -120,22 +163,112 @@ watch(() => currentCharacter.value, () => {
   isDynamicBackground.value = hasDynamicBackground.value;
 }, { deep: true });
 
+// 添加Map操作辅助函数
+function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V) {
+  console.log('[DEBUG] 设置Map值:', { mapName: map === currentAudioData.value ? 'currentAudioData' : 
+    map === isPlaying.value ? 'isPlaying' : 'isGeneratingAudio', key, value });
+  map.set(key, value);
+  console.log('[DEBUG] Map更新后:', { 
+    mapName: map === currentAudioData.value ? 'currentAudioData' : 
+      map === isPlaying.value ? 'isPlaying' : 'isGeneratingAudio',
+    size: map.size,
+    entries: Array.from(map.entries())
+  });
+}
+
+// 修改计算属性
+const currentStage = computed(() => {
+  console.log('[DEBUG] 计算currentStage:', {
+    isStoryMode: isStoryMode.value,
+    storyMode: currentCharacter.value.storyMode,
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    stages: currentCharacter.value.storyMode.stages
+  });
+  
+  if (!isStoryMode.value) {
+    return currentCharacter.value.storyMode.stages[0];
+  }
+  return currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage];
+});
+
+const isLastStage = computed(() => {
+  console.log('[DEBUG] 计算isLastStage:', {
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    totalStages: currentCharacter.value.storyMode.stages.length
+  });
+  
+  return isStoryMode.value &&
+    currentCharacter.value.storyMode.currentStage === currentCharacter.value.storyMode.stages.length - 1;
+});
+
+const progressPercent = computed(() => {
+  console.log('[DEBUG] 计算progressPercent:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value,
+    currentProgress: storyState.currentProgress,
+    requiredProgress: currentStage.value?.requiredProgress
+  });
+
+  if (!isStoryMode.value) return 100;
+  const stage = currentStage.value;
+  if (!stage || stage.requiredProgress === 0) return 100;
+  
+  // 确保进度不会超过100%
+  const percent = Math.min(100, Math.round((storyState.currentProgress / stage.requiredProgress) * 100));
+  console.log('[DEBUG] 计算出的进度百分比:', percent);
+  return percent;
+});
+
+const showAdvanceButton = computed(() => {
+  console.log('[DEBUG] 计算showAdvanceButton:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value,
+    isLastStage: isLastStage.value,
+    canAdvance: storyState.canAdvance
+  });
+
+  if (!isStoryMode.value) return false;
+  if (isLastStage.value) return false;
+  return storyState.canAdvance;
+});
+
+// 监听剧情模式切换，刷新消息和进度
+watch(isStoryMode, (newVal) => {
+  messages.value = [
+    {
+      id: Date.now(),
+      content: `<div class="background-description">${currentStage.value?.systemPrompt || '暂无背景描述'}</div>`,
+      isUser: false,
+      hasAudio: false
+    },
+    ...(newVal ? [] : currentCharacter.value.initialMessages)
+  ];
+  scrollToBottom();
+});
+
 // 修改handleAIResponse函数
 async function handleAIResponse(response: string) {
-  console.log('[Chat] 收到AI响应:', response);
+  console.log('[DEBUG] handleAIResponse 开始执行');
+  console.log('[DEBUG] 收到AI响应:', response);
   
   // 添加消息到列表
   const messageId = Date.now();
+  console.log('[DEBUG] 创建新消息, messageId:', messageId);
+  
   messages.value.push({
     id: messageId,
     content: response,
     isUser: false,
     hasAudio: true
   });
+  
+  console.log('[DEBUG] 消息添加后的列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
 
   // 生成TTS音频
   try {
-    console.log('[Chat] 开始生成TTS音频, messageId:', messageId);
+    console.log('[DEBUG] 开始生成TTS音频, messageId:', messageId);
     const ttsService = TTSService.getInstance();
     const audioData = await ttsService.generateAudio(response, currentCharacter.value);
     
@@ -143,48 +276,41 @@ async function handleAIResponse(response: string) {
       throw new Error('生成的音频数据为空');
     }
     
-    console.log('[Chat] TTS音频生成成功:', {
+    console.log('[DEBUG] TTS音频生成成功:', {
       messageId,
       audioDataSize: audioData.byteLength,
       hasAudioData: !!audioData
     });
     
-    // 确保在设置数据之前先初始化Map
-    if (!currentAudioData.value) {
-      currentAudioData.value = new Map();
-    }
-    if (!isPlaying.value) {
-      isPlaying.value = new Map();
-    }
-    
-    // 缓存音频数据
-    currentAudioData.value.set(messageId, audioData);
-    isPlaying.value.set(messageId, false);
+    // 使用辅助函数设置音频数据
+    safeSetMap(currentAudioData.value, messageId, audioData);
+    safeSetMap(isPlaying.value, messageId, false);
     
     // 如果启用了自动播放，则自动播放音频
     if (autoPlayTTS.value) {
-      console.log('[Chat] 自动播放音频, messageId:', messageId);
+      console.log('[DEBUG] 准备自动播放音频, messageId:', messageId);
       // 停止其他正在播放的音频
       for (const [id, playing] of isPlaying.value.entries()) {
         if (playing) {
-          console.log('[Chat] 停止其他音频, messageId:', id);
+          console.log('[DEBUG] 停止其他音频, messageId:', id);
           ttsService.stopAudio();
-          isPlaying.value.set(id, false);
+          safeSetMap(isPlaying.value, id, false);
         }
       }
       
       // 设置播放结束回调
       ttsService.onAudioEnded(() => {
-        console.log('[Chat] 音频播放结束, messageId:', messageId);
-        isPlaying.value.set(messageId, false);
+        console.log('[DEBUG] 音频播放结束, messageId:', messageId);
+        safeSetMap(isPlaying.value, messageId, false);
       });
       
       // 开始播放
+      console.log('[DEBUG] 开始播放音频, messageId:', messageId);
       await ttsService.playAudio(audioData);
-      isPlaying.value.set(messageId, true);
+      safeSetMap(isPlaying.value, messageId, true);
     }
   } catch (error) {
-    console.error('[Chat] TTS生成失败:', error);
+    console.error('[DEBUG] TTS生成失败:', error);
     messages.value.push({
       id: Date.now(),
       content: '语音生成失败，请重试',
@@ -192,59 +318,107 @@ async function handleAIResponse(response: string) {
       hasAudio: false
     });
   }
+
+  // 更新剧情进度
+  if (isStoryMode.value && currentStage.value) {
+    console.log('[DEBUG] handleAIResponse 更新剧情进度:', {
+      currentProgress: storyState.currentProgress,
+      requiredProgress: currentStage.value.requiredProgress,
+      storyState: storyState
+    });
+    
+    // 更新进度
+    updateProgress();
+    
+    // 检查是否可以推进剧情
+    if (storyState.currentProgress >= currentStage.value.requiredProgress) {
+      console.log('[DEBUG] 可以推进剧情');
+      updateStoryState({
+        canAdvance: true
+      });
+    }
+  }
 }
 
-// 修改音频播放控制函数
+// 修改toggleAudioPlayback函数
 async function toggleAudioPlayback(messageId: number) {
+  console.log('[DEBUG] toggleAudioPlayback 开始执行, messageId:', messageId);
+  console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+  
   const message = messages.value.find(msg => msg.id === messageId);
   if (!message) {
-    console.warn('[Chat] 未找到消息:', messageId);
+    console.warn('[DEBUG] 未找到消息:', messageId);
     return;
   }
 
   // 检查消息是否还在生成中
   if (isGenerating.value && messageId === messages.value[messages.value.length - 1].id) {
+    console.log('[DEBUG] 消息正在生成中，跳过播放');
     return;
   }
 
-  const audioData = currentAudioData.value.get(messageId);
+  let audioData = currentAudioData.value.get(messageId);
+  
+  // 如果没有音频数据，尝试生成
   if (!audioData) {
-    console.warn('[Chat] 未找到音频数据:', messageId);
-    return;
+    console.log('[DEBUG] 未找到音频数据，开始生成音频, messageId:', messageId);
+    try {
+      // 设置生成状态
+      safeSetMap(isGeneratingAudio.value, messageId, true);
+      
+      // 生成音频
+      const ttsService = TTSService.getInstance();
+      audioData = await ttsService.generateAudio(message.content, currentCharacter.value);
+      
+      if (!audioData || audioData.byteLength === 0) {
+        throw new Error('生成的音频数据为空');
+      }
+      
+      // 保存音频数据
+      safeSetMap(currentAudioData.value, messageId, audioData);
+      safeSetMap(isPlaying.value, messageId, false);
+    } catch (error) {
+      console.error('[DEBUG] 音频生成失败:', error);
+      safeSetMap(isGeneratingAudio.value, messageId, false);
+      return;
+    } finally {
+      safeSetMap(isGeneratingAudio.value, messageId, false);
+    }
   }
 
   const ttsService = TTSService.getInstance();
   const isCurrentlyPlaying = isPlaying.value.get(messageId);
+  console.log('[DEBUG] 当前播放状态:', { messageId, isCurrentlyPlaying });
 
   try {
     if (isCurrentlyPlaying) {
-      console.log('[Chat] 停止播放音频, messageId:', messageId);
+      console.log('[DEBUG] 停止播放音频, messageId:', messageId);
       ttsService.stopAudio();
-      isPlaying.value.set(messageId, false);
+      safeSetMap(isPlaying.value, messageId, false);
     } else {
       // 停止其他正在播放的音频
       for (const [id, playing] of isPlaying.value.entries()) {
         if (playing && id !== messageId) {
-          console.log('[Chat] 停止其他音频, messageId:', id);
+          console.log('[DEBUG] 停止其他音频, messageId:', id);
           ttsService.stopAudio();
-          isPlaying.value.set(id, false);
+          safeSetMap(isPlaying.value, id, false);
         }
       }
 
-      console.log('[Chat] 开始播放音频, messageId:', messageId);
+      console.log('[DEBUG] 开始播放音频, messageId:', messageId);
       // 设置播放结束回调
       ttsService.onAudioEnded(() => {
-        console.log('[Chat] 音频播放结束, messageId:', messageId);
-        isPlaying.value.set(messageId, false);
+        console.log('[DEBUG] 音频播放结束, messageId:', messageId);
+        safeSetMap(isPlaying.value, messageId, false);
       });
       
       // 开始播放
       await ttsService.playAudio(audioData);
-      isPlaying.value.set(messageId, true);
+      safeSetMap(isPlaying.value, messageId, true);
     }
   } catch (error) {
-    console.error('[Chat] 音频播放失败:', error);
-    isPlaying.value.set(messageId, false);
+    console.error('[DEBUG] 音频播放失败:', error);
+    safeSetMap(isPlaying.value, messageId, false);
   }
 }
 
@@ -252,11 +426,14 @@ async function toggleAudioPlayback(messageId: number) {
 const emit = defineEmits(['stream-complete']);
 
 async function sendMessage(text: string) {
+  console.log('[DEBUG] sendMessage 开始执行');
   // 添加用户消息
   addUserMessage(text);
   
   // 添加加载动画消息
   const loadingMessageId = Date.now();
+  console.log('[DEBUG] 创建加载消息, messageId:', loadingMessageId);
+  
   messages.value.push({
     id: loadingMessageId,
     content: '<div class="loading-dots"><span>.</span><span>.</span><span>.</span></div>',
@@ -264,12 +441,14 @@ async function sendMessage(text: string) {
     hasAudio: true
   });
   
+  console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+  
   isGenerating.value = true;
   currentStreamingMessage.value = '';
-  isGeneratingAudio.value.set(loadingMessageId, true);
+  safeSetMap(isGeneratingAudio.value, loadingMessageId, true);
   
   try {
-    console.log('[Chat] 开始生成AI回复, autoPlayTTS:', autoPlayTTS.value);
+    console.log('[DEBUG] 开始生成AI回复');
     
     const response = await generateCharacterReply(
       currentCharacter.value.id,
@@ -283,62 +462,63 @@ async function sendMessage(text: string) {
       }
     );
 
-    // 消息生成完成后，生成TTS音频
-    console.log('[Chat] AI回复生成完成，准备生成TTS音频');
-    
+    console.log('[DEBUG] AI回复生成完成');
+    console.log('[DEBUG] 当前消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+
+    // 更新最后一条消息的内容
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage) {
+      lastMessage.content = response;
+    }
+
+    // 生成TTS音频
     try {
       const ttsService = TTSService.getInstance();
-      console.log('[Chat] 开始生成TTS音频, messageId:', loadingMessageId);
+      console.log('[DEBUG] 开始生成TTS音频, messageId:', loadingMessageId);
       
-      const audioData = await ttsService.generateAudio(currentStreamingMessage.value, currentCharacter.value);
+      const audioData = await ttsService.generateAudio(response, currentCharacter.value);
       
       if (!audioData || audioData.byteLength === 0) {
         throw new Error('生成的音频数据为空');
       }
       
-      console.log('[Chat] TTS音频生成成功:', {
+      console.log('[DEBUG] TTS音频生成成功:', {
         messageId: loadingMessageId,
         audioDataSize: audioData.byteLength,
         hasAudioData: !!audioData
       });
       
-      // 确保在设置数据之前先初始化Map
-      if (!currentAudioData.value) {
-        currentAudioData.value = new Map();
-      }
-      if (!isPlaying.value) {
-        isPlaying.value = new Map();
-      }
-      
-      currentAudioData.value.set(loadingMessageId, audioData);
-      isPlaying.value.set(loadingMessageId, false);
+      // 使用辅助函数设置音频数据
+      safeSetMap(currentAudioData.value, loadingMessageId, audioData);
+      safeSetMap(isPlaying.value, loadingMessageId, false);
       
       // 如果启用了自动播放，则自动播放音频
       if (autoPlayTTS.value) {
-        console.log('[Chat] 自动播放音频, messageId:', loadingMessageId);
+        console.log('[DEBUG] 准备自动播放音频, messageId:', loadingMessageId);
         // 停止其他正在播放的音频
         for (const [id, playing] of isPlaying.value.entries()) {
           if (playing) {
-            console.log('[Chat] 停止其他音频, messageId:', id);
+            console.log('[DEBUG] 停止其他音频, messageId:', id);
             ttsService.stopAudio();
-            isPlaying.value.set(id, false);
+            safeSetMap(isPlaying.value, id, false);
           }
         }
         
         // 设置播放结束回调
         ttsService.onAudioEnded(() => {
-          console.log('[Chat] 音频播放结束, messageId:', loadingMessageId);
-          isPlaying.value.set(loadingMessageId, false);
+          console.log('[DEBUG] 音频播放结束, messageId:', loadingMessageId);
+          safeSetMap(isPlaying.value, loadingMessageId, false);
         });
         
         // 开始播放
+        console.log('[DEBUG] 开始播放音频, messageId:', loadingMessageId);
         await ttsService.playAudio(audioData);
-        isPlaying.value.set(loadingMessageId, true);
+        safeSetMap(isPlaying.value, loadingMessageId, true);
       } else {
-        console.log('[Chat] 自动播放已禁用，跳过音频播放');
+        console.log('[DEBUG] 自动播放已禁用，跳过音频播放');
       }
     } catch (error) {
-      console.error('[Chat] TTS生成失败:', error);
+      console.error('[DEBUG] TTS生成失败:', error);
       messages.value.push({
         id: Date.now(),
         content: '语音生成失败，请重试',
@@ -347,7 +527,7 @@ async function sendMessage(text: string) {
       });
     }
   } catch (error) {
-    console.error('获取AI回复失败:', error);
+    console.error('[DEBUG] 获取AI回复失败:', error);
     // 移除加载消息
     messages.value = messages.value.filter(msg => msg.id !== loadingMessageId);
     // 添加错误消息
@@ -360,7 +540,11 @@ async function sendMessage(text: string) {
   } finally {
     isGenerating.value = false;
     currentStreamingMessage.value = '';
-    isGeneratingAudio.value.set(loadingMessageId, false);
+    safeSetMap(isGeneratingAudio.value, loadingMessageId, false);
+    console.log('[DEBUG] sendMessage 执行完成');
+    console.log('[DEBUG] 最终消息列表:', messages.value.map(m => ({ id: m.id, content: m.content.substring(0, 20) + '...' })));
+    console.log('[DEBUG] 最终音频数据Map:', Array.from(currentAudioData.value.entries()));
+    console.log('[DEBUG] 最终播放状态Map:', Array.from(isPlaying.value.entries()));
   }
   
   updateProgress();
@@ -396,8 +580,27 @@ function addUserMessage(text: string) {
 }
 
 function updateProgress() {
-  if (progress.value < 95) {
-    progress.value += 5;
+  console.log('[DEBUG] updateProgress 开始执行:', {
+    isStoryMode: isStoryMode.value,
+    storyState: storyState,
+    currentStage: currentStage.value
+  });
+
+  if (isStoryMode.value) {
+    console.log('[DEBUG] 剧情模式，调用updateStoryProgress');
+    updateStoryProgress();
+    canAdvanceStory.value = storyState.canAdvance;
+    console.log('[DEBUG] 更新后状态:', {
+      storyState: storyState,
+      canAdvance: canAdvanceStory.value,
+      progressPercent: progressPercent.value
+    });
+  } else {
+    console.log('[DEBUG] 非剧情模式，更新普通进度');
+    if (progress.value < 95) {
+      progress.value += 5;
+      console.log('[DEBUG] 普通进度更新为:', progress.value);
+    }
   }
 }
 
@@ -418,14 +621,21 @@ function showClearDialog() {
 }
 
 function clearChat() {
+  console.log('[DEBUG] 清除聊天记录:', {
+    currentCharacter: currentCharacter.value,
+    storyMode: currentCharacter.value.storyMode,
+    currentStage: currentCharacter.value.storyMode.currentStage,
+    systemPrompt: currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt
+  });
+  
   messages.value = [
     {
       id: Date.now(),
-      content: `<div class="background-description">${currentCharacter.value.backgroundDescription}</div>`,
+      content: `<div class="background-description">${currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage]?.systemPrompt || '暂无背景描述'}</div>`,
       isUser: false,
       hasAudio: false
     },
-    ...currentCharacter.value.initialMessages
+    ...(isStoryMode.value ? [] : currentCharacter.value.initialMessages)
   ];
   clearChatHistory();
   progress.value = currentCharacter.value.sceneInfo.progress;
@@ -496,6 +706,44 @@ function toggleBackgroundType() {
   }
 }
 
+// 添加剧情模式切换处理函数
+function handleStoryModeChange(value: boolean) {
+  console.log('[Chat] 剧情模式设置改变:', value);
+  isStoryMode.value = value;
+  toggleStoryMode(value);
+}
+
+// 修改handleAdvanceStory函数
+function handleAdvanceStory() {
+  console.log('[DEBUG] handleAdvanceStory 开始执行:', {
+    canAdvance: canAdvanceStory.value,
+    storyState: storyState,
+    currentStage: currentStage.value
+  });
+
+  if (canAdvanceStory.value) {
+    advanceStory();
+    canAdvanceStory.value = false;
+    
+    // 剧情推进后只显示新阶段的背景描述
+    const newStage = currentCharacter.value.storyMode.stages[currentCharacter.value.storyMode.currentStage];
+    console.log('[DEBUG] 推进到新阶段:', {
+      newStage,
+      currentStage: currentCharacter.value.storyMode.currentStage
+    });
+    
+    messages.value = [
+      {
+        id: Date.now(),
+        content: `<div class="background-description">${newStage?.systemPrompt || '暂无背景描述'}</div>`,
+        isUser: false,
+        hasAudio: false
+      }
+    ];
+    scrollToBottom();
+  }
+}
+
 onMounted(() => {
   scrollToBottom();
 });
@@ -535,24 +783,39 @@ onMounted(() => {
         :has-dynamic-background="hasDynamicBackground"
         :is-dynamic-background="isDynamicBackground"
         :autoPlayTTS="autoPlayTTS"
+        :is-story-mode="isStoryMode"
         @toggle-collapse="toggleCollapse"
         @toggle-background="toggleBackgroundType"
         @test-api="testApiConnection"
         @model-changed="handleModelChange"
         @auto-play-changed="handleAutoPlayChange"
+        @story-mode-changed="handleStoryModeChange"
       />
       
-      <!-- 情节信息区域 -->
+      <!-- 只显示当前阶段名字和进度条 -->
       <div class="scene-container" v-if="!isCollapsed">
         <div class="scene-info">
-          <div class="scene-text">情节：{{ currentCharacter.sceneInfo.title }}</div>
-          <div class="scene-stage">{{ currentCharacter.sceneInfo.stage }}</div>
-        </div>
-        
-        <div class="progress-section">
-          <div class="progress-bar">
-            <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+          <div class="scene-text">
+            {{ currentStage.stageName }}
           </div>
+        </div>
+        <div class="progress-section">
+          <div class="progress-segments">
+            <div 
+              v-for="i in currentStage?.requiredProgress || 0" 
+              :key="i"
+              class="progress-segment"
+              :class="{ 'completed': i <= storyState.currentProgress }"
+            ></div>
+          </div>
+          <button 
+            class="advance-button"
+            :class="{ 'can-advance': storyState.canAdvance }"
+            :disabled="!storyState.canAdvance"
+            @click="handleAdvanceStory"
+          >
+            {{ storyState.canAdvance ? '推进剧情' : `${storyState.currentProgress}/${currentStage?.requiredProgress || 0}` }}
+          </button>
         </div>
       </div>
       
@@ -582,7 +845,16 @@ onMounted(() => {
             ]"
           >
             <template v-if="message.content.includes('background-description')">
-              <div class="background-description">{{ currentCharacter.backgroundDescription }}</div>
+              <div class="background-description" @click="() => {
+                console.log('[DEBUG] 背景描述点击:', {
+                  currentStage: currentCharacter.storyMode.currentStage,
+                  stages: currentCharacter.storyMode.stages,
+                  systemPrompt: currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage]?.systemPrompt,
+                  character: currentCharacter
+                });
+              }">
+                {{ currentCharacter.storyMode.stages[currentCharacter.storyMode.currentStage]?.systemPrompt || '暂无背景描述' }}
+              </div>
             </template>
             <template v-else>
               <div v-if="!message.isUser" class="character-avatar">
@@ -713,12 +985,21 @@ onMounted(() => {
 
 /* 场景信息 */
 .scene-container {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
   background-color: rgba(26, 42, 42, 0.6);
   color: white;
   padding: 10px 15px;
   font-size: 14px;
   height: 80px;
   box-sizing: border-box;
+  max-width: 480px;
+  margin: 0 auto;
+  z-index: 99;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .scene-info {
@@ -740,43 +1021,80 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
 }
 
-.progress-bar {
+.progress-segments {
   flex: 1;
-  height: 4px;
-  background-color: #3a4a4a;
-  border-radius: 2px;
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
   overflow: hidden;
-  margin-right: 10px;
 }
 
-.progress-fill {
-  height: 100%;
+.progress-segment {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.progress-segment.completed {
   background-color: #42b883;
-  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(66, 184, 131, 0.3);
+}
+
+.advance-button {
+  background-color: #3a4a4a;
+  color: #cccccc;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.advance-button.can-advance {
+  background-color: #42b883;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.advance-button.can-advance:hover {
+  background-color: #3aa876;
+  transform: translateY(-1px);
 }
 
 /* 聊天容器 */
 .chat-wrapper {
-  position: absolute;
-  bottom: 0;
+  position: fixed;
   left: 0;
   width: 100%;
-  transition: height 0.3s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   background-color: rgba(18, 26, 26, 0.5);
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .chat-wrapper:not(.collapsed) {
-  height: calc(100% - 50px - 80px);
+  height: calc(100% - 140px);
+  top: 140px;
+  bottom: 0;
 }
 
 .chat-wrapper.collapsed {
-  height: auto;
-  min-height: 40%;
-  max-height: 40%;
+  height: 25%;
+  bottom: 100px;
 }
 
 .chat-container {
@@ -787,13 +1105,13 @@ onMounted(() => {
   padding: 10px 0;
   margin-top: 36px;
   margin-bottom: 120px;
-  -webkit-overflow-scrolling: touch; /* 添加弹性滚动 */
-  overscroll-behavior: contain; /* 防止滚动传播 */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   transition: all 0.3s ease;
 }
 
 .chat-wrapper.collapsed .chat-container {
-  margin-bottom: 80px;
+  margin-bottom: 0;
 }
 
 /* 消息样式 */
@@ -1097,5 +1415,150 @@ onMounted(() => {
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;
+}
+
+/* 添加推进按钮样式 */
+.advance-button {
+  background-color: #3a4a4a;
+  color: #cccccc;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.advance-button.can-advance {
+  background-color: #42b883;
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+}
+
+.advance-button.can-advance:hover {
+  background-color: #3aa876;
+  transform: translateY(-1px);
+}
+
+.story-progress-container {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  background-color: rgba(26, 42, 42, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 12px 15px;
+  z-index: 99;
+  max-width: 480px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.story-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stage-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.stage-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stage-description {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #42b883, #3aa876);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-button {
+  padding: 6px 12px;
+  background-color: rgba(66, 184, 131, 0.2);
+  color: #42b883;
+  border: 1px solid #42b883;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.progress-button:hover:not(:disabled) {
+  background-color: #42b883;
+  color: white;
+}
+
+.progress-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
 }
 </style> 

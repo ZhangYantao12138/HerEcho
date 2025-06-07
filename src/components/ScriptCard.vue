@@ -28,30 +28,32 @@ defineEmits(['click']);
         <div class="lock-icon">🔒</div>
         <div v-if="script.comingSoon" class="coming-soon">即将上线</div>
       </div>
-    </div>
-    <div class="script-info">
-      <h3 class="script-title">{{ script.title }}</h3>
-      <p class="script-description">{{ script.description }}</p>
+      <div class="script-title-bar">
+        <span class="script-title">{{ script.title }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .script-card {
-  background-color: #1e1e1e;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
   width: 100%;
-  max-width: 440px;
+  max-width: 400px;
+  aspect-ratio: 16/9;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   margin: 0 auto;
+  cursor: pointer;
+  position: relative;
+  background: #1e1e1e;
+  transition: box-shadow 0.3s, transform 0.3s;
+  display: flex;
 }
 
 .script-card:not(.locked):hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
 .script-card.locked {
@@ -59,38 +61,32 @@ defineEmits(['click']);
 }
 
 .script-cover {
-  height: 160px;
+  width: 100%;
+  height: 100%;
   position: relative;
-  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
 }
 
 .script-cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.script-card:not(.locked):hover .script-cover img {
-  transform: scale(1.05);
-}
-
-.new-badge {
+  display: block;
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: #e74c3c;
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-  padding: 4px 8px;
-  border-radius: 12px;
-  z-index: 2;
+  left: 0;
+  top: 0;
+  z-index: 1;
+}
+
+.new-badge, .lock-overlay {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
 }
 
 .lock-overlay {
-  position: absolute;
-  top: 0;
   left: 0;
   width: 100%;
   height: 100%;
@@ -99,7 +95,6 @@ defineEmits(['click']);
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 2;
 }
 
 .lock-icon {
@@ -115,26 +110,29 @@ defineEmits(['click']);
   font-weight: bold;
 }
 
-.script-info {
-  padding: 12px 15px;
+.script-title-bar {
+  width: 100%;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(0deg, rgba(30,30,30,0.85) 80%, rgba(30,30,30,0.1) 100%);
+  padding: 16px 0 10px 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
 }
 
 .script-title {
-  margin: 0 0 6px 0;
-  font-size: 18px;
-  color: white;
-  font-weight: 600;
-}
-
-.script-description {
-  margin: 0;
-  font-size: 13px;
-  color: #bbb;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  color: #fff;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  max-width: 90%;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style> 

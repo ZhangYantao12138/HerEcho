@@ -86,6 +86,8 @@ function fillExample() {
         <button class="close-btn" @click="closeModal">×</button>
       </div>
       
+      <div class="dev-tag">测试功能，开发中</div>
+      
       <div class="modal-content">
         <div class="form-section">
           <label class="form-label">角色名称</label>
@@ -174,6 +176,17 @@ function fillExample() {
   align-items: center;
   padding: 20px 24px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dev-tag {
+  background-color: #ff9800;
+  color: #000;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  margin: -8px 24px 16px;
+  display: inline-block;
 }
 
 .modal-title {
