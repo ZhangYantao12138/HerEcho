@@ -6,9 +6,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/chat'
+      redirect: '/dating'
     },
-
+    {
+      path: '/dating',
+      name: 'dating',
+      component: () => import('../views/datingview.vue')
+    },
     {
       path: '/dream',
       name: 'dream',
@@ -57,7 +61,7 @@ const router = createRouter({
     },
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/chat'
+      redirect: '/dating'
     }
   ]
 })
@@ -69,7 +73,7 @@ router.beforeEach((to, _from, next) => {
     // 例如检查用户是否是管理员
     const isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (!isAdmin) {
-      next('/chat');
+      next('/dating');
     } else {
       next();
     }

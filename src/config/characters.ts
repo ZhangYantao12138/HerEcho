@@ -29,7 +29,7 @@ export const characterQiangQingCiB001C001: Character = {
     name: '羌青瓷',
     avatar: B001C001_BG,
     backgroundImage: B001C001_VIDEO, // 使用视频作为背景
-    // backgroundDescription: '优雅神秘的心理医生，莱诺家族继承者。与程聿怀有着复杂的过去，曾为保护他消除其记忆。',
+    backgroundDescription: '优雅神秘的心理医生，莱诺家族继承者。与程聿怀有着复杂的过去，曾为保护他消除其记忆。',
     voiceSettings: {
         voice_id: 'female-chengshu',
         speed: 1.0,
@@ -239,7 +239,7 @@ export const characterChengYuhuaiB001C002: Character = {
     name: '程聿怀',
     avatar: B001C002_BG,
     backgroundImage: B001C002_BG,
-    // backgroundDescription: '心中有伤、外冷内热的男子，曾是记者，现为心理医生。与羌青瓷有着复杂的过去，曾失去记忆。',
+    backgroundDescription: '心中有伤、外冷内热的男子，曾是记者，现为心理医生。与羌青瓷有着复杂的过去，曾失去记忆。',
     voiceSettings: {
         voice_id: 'male-chengshu',
         speed: 1.0,
