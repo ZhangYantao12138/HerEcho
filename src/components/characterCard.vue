@@ -130,8 +130,8 @@ function handleTouchEnd(e: TouchEvent) {
   display: flex;
   justify-content: space-between;
   width: 100%;
-  padding: 0 50px;
-  gap: 18px;
+  padding: 0 30px;
+  gap: 50px;
 }
 .btn {
   display: flex;
