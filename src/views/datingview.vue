@@ -1,6 +1,10 @@
 <template>
   <div class="dating-view">
-    <div class="header">角色聊天</div>
+    <div class="topbar">
+      <span class="logo">💜</span>
+      <span class="title">角色聊天</span>
+      <span class="menu-icon">☰</span>
+    </div>
     <div class="card-container">
       <CharacterCard :character="currentCharacter" @cancel="showNextCharacter" @match="onMatch" />
     </div>
@@ -29,7 +33,7 @@ function onMatch() {
 
 <style scoped>
 .dating-view {
-  background: #f7f3ff;
+  background: #181828;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -44,12 +48,32 @@ function onMatch() {
   left: 50%;
   transform: translateX(-50%);
 }
-
-.header {
-  font-size: 24px;
+.topbar {
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e1e2f;
+  padding: 0 20px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.logo {
+  font-size: 22px;
+  color: #d893eb;
   font-weight: bold;
-  margin: 32px 0 24px 0;
-  color: #7a4fff;
+}
+.title {
+  font-size: 20px;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.menu-icon {
+  font-size: 22px;
+  color: #fff;
+  cursor: pointer;
 }
 .card-container {
   width: 90vw;
@@ -60,5 +84,8 @@ function onMatch() {
   justify-content: center;
   align-items: center;
   position: relative;
+    /* 新增：为顶部栏预留空间 */
+    padding-top: 85px;
+    box-sizing: border-box;
 }
 </style> 
