@@ -6,9 +6,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/chat'
+      redirect: '/dating'
     },
-
+    {
+      path: '/dating',
+      name: 'dating',
+      component: () => import('../views/datingview.vue')
+    },
     {
       path: '/dream',
       name: 'dream',
