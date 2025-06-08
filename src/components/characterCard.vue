@@ -1,16 +1,21 @@
 <template>
-  <div class="character-card" :style="{ backgroundImage: `url(${character.avatar})` }">
+  <div class="character-card" 
+       :style="{ backgroundImage: `url(${character.avatar})` }"
+       @touchstart="handleTouchStart"
+       @touchmove="handleTouchMove"
+       @touchend="handleTouchEnd"
+       @touchcancel="handleTouchEnd">
     <div class="overlay">
       <div class="name">{{ character.name }}</div>
       <!-- 增加一条分割线 -->
       <div class="divider"></div>
       <div class="desc">{{ characterDesc }}</div>
       <div class="actions">
-        <button class="btn skip" @click="$emit('cancel')">
+        <button class="btn skip" @click.stop="$emit('cancel')">
           <span class="icon">✖</span>
           <span class="text"></span>
         </button>
-        <button class="btn like" @click="$emit('match')">
+        <button class="btn like" @click.stop="$emit('match')">
           <span class="icon">❤</span>
           <span class="text"></span>
         </button>
@@ -20,22 +25,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+
 const props = defineProps({
   character: { type: Object, required: true }
 });
+
+const emit = defineEmits(['cancel', 'match']);
+
 const characterDesc = computed(() => {
   // 取角色的介绍信息，优先 backgroundDescription，没有则用 name
   return props.character.backgroundDescription || props.character.name;
 });
+
+const startPoint = ref<{ x: number; y: number } | null>(null);
+
+function handleTouchStart(e: TouchEvent) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  startPoint.value = { x: touch.clientX, y: touch.clientY };
+}
+
+function handleTouchMove(e: TouchEvent) {
+  if (!startPoint.value) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const deltaX = touch.clientX - startPoint.value.x;
+  
+  // 如果滑动距离超过阈值，触发相应的动作
+  if (Math.abs(deltaX) > window.innerWidth * 0.3) {
+    if (deltaX > 0) {
+      emit('match');
+    } else {
+      emit('cancel');
+    }
+  }
+}
+
+function handleTouchEnd(e: TouchEvent) {
+  e.preventDefault();
+  startPoint.value = null;
+}
 </script>
 
 <style scoped>
 .character-card {
   width: 80vw;
-  max-width: 400px;
+  max-width: 320px;
   height: 40vw;
-  max-height: 800px;
+  max-height: 640px;
   aspect-ratio: 1 / 2;
   background-size: cover;
   background-position: center;
@@ -46,6 +84,10 @@ const characterDesc = computed(() => {
   align-items: flex-end;
   overflow: hidden;
   border: 4px solid rgba(216, 147, 235, 0.7);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .overlay {
   width: 100%;
