@@ -1,5 +1,16 @@
 # HerEcho - 羌青瓷角色扮演聊天应用
 
+[![GitHub stars](https://img.shields.io/github/stars/Jackwang-lea/HerEcho?style=social)](https://github.com/Jackwang-lea/HerEcho/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/Jackwang-lea/HerEcho?style=social)](https://github.com/Jackwang-lea/HerEcho/network/members)
+[![GitHub license](https://img.shields.io/github/license/Jackwang-lea/HerEcho?color=blue&style=flat-square)](https://github.com/Jackwang-lea/HerEcho/blob/main/LICENSE)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Jackwang-lea/HerEcho?color=blue&style=flat-square)](https://github.com/Jackwang-lea/HerEcho/commits/main)
+
+[![Vue.js](https://img.shields.io/badge/Vue.js-3.3.4-4FC08D?style=flat-square&logo=vue.js)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.2.2-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.0.12-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![Pinia](https://img.shields.io/badge/Pinia-2.1.7-1890FF?style=flat-square&logo=pinia)](https://pinia.vuejs.org/)
+[![DeepSeek](https://img.shields.io/badge/DeepSeek-API-FF69B4?style=flat-square&logo=deepseek)](https://deepseek.com/)
+
 HerEcho是一个基于Vue 3和DeepSeek API的角色扮演聊天应用，让用户可以与虚拟角色"羌青瓷"进行对话互动。项目使用了现代前端技术栈，包括Vue 3、TypeScript、Vite和Pinia。
 
 ## 在线体验
