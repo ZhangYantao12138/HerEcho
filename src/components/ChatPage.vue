@@ -124,6 +124,7 @@ const sidebarStore = useSidebarStore();
 
 // 添加 autoPlayTTS 状态
 const autoPlayTTS = ref(localStorage.getItem('autoPlayTTS') === 'true');
+const isStoryMode = ref(false);
 
 // 处理自动播放设置变化
 function handleAutoPlayChange(value: boolean) {
@@ -312,6 +313,7 @@ onMounted(() => {
         :hasDynamicBackground="true"
         :isDynamicBackground="true"
         :autoPlayTTS="autoPlayTTS"
+        :isStoryMode="isStoryMode"
         @test-api="testApiConnection"
         @change-viewpoint="handleViewpointChange"
         @model-changed="handleModelChange"

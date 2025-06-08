@@ -5,12 +5,12 @@ import { characterPromptConfig } from './promptConfig';
 export function generateCharacterResponsePrompt(character: Character, userMessage: string): string {
   // 使用配置中的基础模板，替换占位符
   let basePrompt = characterPromptConfig.baseTemplate
-    .replace('{character_name}', character.name)
-    .replace('{character_system_prompt}', character.systemPrompt)
-    .replace('{scene_title}', character.sceneInfo.title)
-    .replace('{scene_stage}', character.sceneInfo.stage)
-    .replace('{progress}', character.sceneInfo.progress.toString())
-    .replace('{user_message}', userMessage);
+    .replace('{character_name}', character.name || '')
+    .replace('{character_system_prompt}', character.systemPrompt || '')
+    .replace('{scene_title}', character.sceneInfo?.title || '')
+    .replace('{scene_stage}', character.sceneInfo?.stage || '')
+    .replace('{progress}', character.sceneInfo?.progress?.toString() || '0')
+    .replace('{user_message}', userMessage || '');
 
   // 添加角色特定指令
   const characterSpecificInstruction = characterPromptConfig.characterSpecificInstructions[character.id as keyof typeof characterPromptConfig.characterSpecificInstructions];
